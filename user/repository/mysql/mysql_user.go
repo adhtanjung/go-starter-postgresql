@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/bxcodec/go-clean-arch/domain"
+	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-boilerplate/domain/helper"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -43,6 +44,7 @@ func (m *mysqlUserRepository) fetch(ctx context.Context, query string, args ...i
 			&t.CreatedAt,
 			&t.UpdatedAt,
 			&t.DeletedAt,
+			&t.Role.ID,
 		)
 		if err != nil {
 			logrus.Error(err)
@@ -55,13 +57,13 @@ func (m *mysqlUserRepository) fetch(ctx context.Context, query string, args ...i
 }
 
 func (m *mysqlUserRepository) Store(ctx context.Context, u *domain.User) (err error) {
-	uuid := GenerateUUID()
-	query := `INSERT user SET id =?, username=? , password=? , name=? , updated_at=? , created_at= ? , deleted_at=?`
+	uuid := helper.GenerateUUID()
+	query := `INSERT user SET id =?, username=? , password=? , name=? , updated_at=? , created_at= ? , deleted_at=?, role=?`
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
 	}
-	_, err = stmt.ExecContext(ctx, uuid, u.Username, u.Password, u.Name, u.UpdatedAt, u.CreatedAt, nil)
+	_, err = stmt.ExecContext(ctx, uuid, u.Username, u.Password, u.Name, u.UpdatedAt, u.CreatedAt, nil, u.Role.ID)
 	if err != nil {
 		return
 	}

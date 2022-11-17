@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/bxcodec/go-clean-arch/user/usecase/helper"
+	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
 )
 
 type userUseCase struct {
 	userRepo       domain.UserRepository
+	roleRepo       domain.RoleRepository
 	contextTimeout time.Duration
 }
 
-func NewUserUsecase(u domain.UserRepository, timeout time.Duration) domain.UseruUsecase {
+func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, timeout time.Duration) domain.UseruUsecase {
 	return &userUseCase{
 		userRepo:       u,
+		roleRepo:       r,
 		contextTimeout: timeout,
 	}
 
@@ -45,10 +47,17 @@ func (u *userUseCase) Store(c context.Context, m *domain.User) (err error) {
 
 	hashed, err := helper.HashPassword(m.Password)
 	if err != nil {
-
 		fmt.Printf("password hashing failed, error: '%s'", err.Error())
 	}
+
+	defaultRole, err := u.roleRepo.GetByName(ctx, "user")
+	if err != nil {
+		fmt.Printf("fetch default role failed, error: '%s'", err.Error())
+		return
+	}
+
 	now := time.Now()
+	m.Role = defaultRole
 	m.CreatedAt = now
 	m.UpdatedAt = now
 	m.Password = hashed

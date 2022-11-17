@@ -1,4 +1,4 @@
-module github.com/bxcodec/go-clean-arch
+module github.com/adhtanjung/go-boilerplate
 
 go 1.12
 

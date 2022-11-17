@@ -3,7 +3,7 @@ package domain
 import "context"
 
 type Role struct {
-	ID   int    `json:"id"`
+	Base
 	Name string `json:"name"`
 }
 

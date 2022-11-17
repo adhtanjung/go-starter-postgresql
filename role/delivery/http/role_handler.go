@@ -9,49 +9,52 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
+type RoleHandler struct {
+	RUsecase domain.RoleUsecase
+}
 type ResponseError struct {
 	Message string `json:"message"`
 }
 
-type AuthHandler struct {
-	AUsecase domain.AuthUsecase
-}
-type UserResponse struct {
-	Data       domain.User `json:"data"`
-	StatusCode int         `json:"status_code"`
-}
-
-func NewAuthHandler(e *echo.Echo, au domain.AuthUsecase) {
-	handler := &AuthHandler{
-		AUsecase: au,
+func NewRoleHandler(e *echo.Group, r domain.RoleUsecase) {
+	handler := &RoleHandler{
+		RUsecase: r,
 	}
 
-	e.POST("/login", handler.Login)
-	// apiGroup := e.Group("auth")
-	// apiGroup.POST("/login", handler.Login)
+	e.POST("/roles", handler.Store)
+	e.GET("/roles/:name", handler.GetByName)
 }
 
-func (a *AuthHandler) Login(c echo.Context) (err error) {
-	var auth domain.Auth
-	err = c.Bind(&auth)
+func (r *RoleHandler) Store(c echo.Context) (err error) {
+	var role domain.Role
+	err = c.Bind(&role)
 	if err != nil {
-		return c.String(http.StatusBadRequest, "bad request")
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-
 	ctx := c.Request().Context()
-	token, errLogin := a.AUsecase.Login(ctx, auth)
+	err = r.RUsecase.Store(ctx, &role)
+	if err != nil {
 
-	if errLogin != nil {
-		return c.JSON(getStatusCode(errLogin), ResponseError{Message: errLogin.Error()})
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
+	return c.JSON(http.StatusOK, echo.Map{
+		"data": role,
+	})
+
+}
+
+func (r *RoleHandler) GetByName(c echo.Context) (err error) {
+	name := c.QueryParam("name")
+	ctx := c.Request().Context()
+	role, err := r.RUsecase.GetByName(ctx, name)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusOK, echo.Map{"token": token})
-
+	return c.JSON(http.StatusOK, echo.Map{
+		"data": role,
+	})
 }
-
-func isRequestValid(m *domain.Auth) (bool, error) {
+func isRequestValid(m *domain.Article) (bool, error) {
 	validate := validator.New()
 	err := validate.Struct(m)
 	if err != nil {
@@ -64,7 +67,6 @@ func getStatusCode(err error) int {
 	if err == nil {
 		return http.StatusOK
 	}
-
 	logrus.Error(err)
 	switch err {
 	case domain.ErrInternalServerError:

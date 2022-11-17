@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/spf13/viper"
 
-	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/bxcodec/go-clean-arch/user/usecase/helper"
+	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
 )
 
 type authUsecase struct {
@@ -62,7 +63,7 @@ func (a *authUsecase) Login(c context.Context, auth domain.Auth) (string, error)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte("secret"))
+	t, err := token.SignedString([]byte(viper.GetString(`secret.jwt`)))
 	if err != nil {
 		return "", err
 	}

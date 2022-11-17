@@ -11,19 +11,23 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
 
-	_articleHttpDelivery "github.com/bxcodec/go-clean-arch/article/delivery/http"
-	_articleHttpDeliveryMiddleware "github.com/bxcodec/go-clean-arch/article/delivery/http/middleware"
-	_articleRepo "github.com/bxcodec/go-clean-arch/article/repository/mysql"
-	_articleUcase "github.com/bxcodec/go-clean-arch/article/usecase"
-	_authHttpDelivery "github.com/bxcodec/go-clean-arch/auth/delivery/http"
-	_authUcase "github.com/bxcodec/go-clean-arch/auth/usecase"
-	_authorRepo "github.com/bxcodec/go-clean-arch/author/repository/mysql"
-	_userHttpDelivery "github.com/bxcodec/go-clean-arch/user/delivery/http"
-	_userRepo "github.com/bxcodec/go-clean-arch/user/repository/mysql"
-	_userUcase "github.com/bxcodec/go-clean-arch/user/usecase"
-	middleware "github.com/labstack/echo/v4/middleware"
+	_articleHttpDelivery "github.com/adhtanjung/go-boilerplate/article/delivery/http"
+	_articleHttpDeliveryMiddleware "github.com/adhtanjung/go-boilerplate/article/delivery/http/middleware"
+	_articleRepo "github.com/adhtanjung/go-boilerplate/article/repository/mysql"
+	_articleUcase "github.com/adhtanjung/go-boilerplate/article/usecase"
+	_authHttpDelivery "github.com/adhtanjung/go-boilerplate/auth/delivery/http"
+	_authUcase "github.com/adhtanjung/go-boilerplate/auth/usecase"
+	_authorRepo "github.com/adhtanjung/go-boilerplate/author/repository/mysql"
+	_roleHttpDelivery "github.com/adhtanjung/go-boilerplate/role/delivery/http"
+	_roleRepo "github.com/adhtanjung/go-boilerplate/role/repository/mysql"
+	_roleUcase "github.com/adhtanjung/go-boilerplate/role/usecase"
+	_userHttpDelivery "github.com/adhtanjung/go-boilerplate/user/delivery/http"
+	_userRepo "github.com/adhtanjung/go-boilerplate/user/repository/mysql"
+	_userUcase "github.com/adhtanjung/go-boilerplate/user/usecase"
+	// middleware "github.com/labstack/echo/v4/middleware"
 )
 
 func init() {
@@ -65,7 +69,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	signingKey := []byte("secret")
+	signingKey := []byte(viper.GetString(`secret.jwt`))
 
 	config := middleware.JWTConfig{
 		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
@@ -97,14 +101,17 @@ func main() {
 	ar := _articleRepo.NewMysqlArticleRepository(dbConn)
 
 	userRepo := _userRepo.NewMysqlUserRepository(dbConn)
+	roleRepo := _roleRepo.NewMysqlRoleRepository(dbConn)
 
 	timeoutContext := time.Duration(viper.GetInt("context.timeout")) * time.Second
-	us := _userUcase.NewUserUsecase(userRepo, timeoutContext)
+	us := _userUcase.NewUserUsecase(userRepo, roleRepo, timeoutContext)
+	ru := _roleUcase.NewRoleUsecase(roleRepo, timeoutContext)
 	auth := _authUcase.NewAuthUsecase(userRepo, timeoutContext)
 	au := _articleUcase.NewArticleUsecase(ar, authorRepo, timeoutContext)
 	_authHttpDelivery.NewAuthHandler(e, auth)
 	_articleHttpDelivery.NewArticleHandler(e, au)
 	_userHttpDelivery.NewUserHandler(apiGroup, us)
+	_roleHttpDelivery.NewRoleHandler(apiGroup, ru)
 
 	log.Fatal(e.Start(viper.GetString("server.address")))
 }

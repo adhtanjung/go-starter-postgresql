@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	"github.com/bxcodec/go-clean-arch/domain"
+	"github.com/adhtanjung/go-boilerplate/domain"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	validator "gopkg.in/go-playground/validator.v9"
