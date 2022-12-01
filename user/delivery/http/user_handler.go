@@ -14,16 +14,18 @@ type ResponseError struct {
 }
 
 type UserHandler struct {
-	UUsecase domain.UseruUsecase
+	UUsecase domain.UserUsecase
 }
 
-func NewUserHandler(e *echo.Group, us domain.UseruUsecase) {
+func NewUserHandler(e *echo.Group, us domain.UserUsecase) {
 	handler := &UserHandler{
 		UUsecase: us,
 	}
 
 	// e.GET("/users", handler.FetchUser)
 	e.POST("/users", handler.Store)
+	e.PUT("/users/:id", handler.Update)
+	e.GET("/users/:id", handler.GetByID)
 	// e.GET("/users/:id")
 	// e.DELETE("/users/:id")
 
@@ -47,20 +49,17 @@ func NewUserHandler(e *echo.Group, us domain.UseruUsecase) {
 // }
 
 func (u *UserHandler) Store(c echo.Context) (err error) {
-
 	var user domain.User
 	err = c.Bind(&user)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-
 	}
 	var ok bool
 	if ok, err = isRequestValid(&user); !ok {
-
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 	ctx := c.Request().Context()
-	err = u.UUsecase.Store(ctx, &user)
+	err = u.UUsecase.Store(ctx, &user, &domain.UserRole{})
 	if err != nil {
 
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
@@ -69,26 +68,37 @@ func (u *UserHandler) Store(c echo.Context) (err error) {
 
 }
 
-func (u *UserHandler) Login(c echo.Context) (err error) {
+func (u *UserHandler) GetByID(c echo.Context) (err error) {
+	id := c.Param("id")
+	if len(id) <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, echo.Map{"message": "id is required"})
+	}
+	ctx := c.Request().Context()
 
+	user, err := u.UUsecase.GetByID(ctx, id)
+	if err != nil {
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+	}
+	return c.JSON(http.StatusOK, user)
+}
+
+func (u *UserHandler) Update(c echo.Context) (err error) {
 	var user domain.User
 	err = c.Bind(&user)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-
 	}
-	var ok bool
-	if ok, err = isRequestValid(&user); !ok {
-		return c.JSON(http.StatusBadRequest, err.Error())
+	id := c.Param("id")
+	if len(id) <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, echo.Map{"message": "id is required"})
 	}
+	user.ID = id
 	ctx := c.Request().Context()
-	err = u.UUsecase.Store(ctx, &user)
+	err = u.UUsecase.Update(ctx, &user)
 	if err != nil {
-
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusCreated, user)
-
+	return c.JSON(http.StatusOK, echo.Map{"message": "user updated"})
 }
 
 func isRequestValid(m *domain.User) (bool, error) {

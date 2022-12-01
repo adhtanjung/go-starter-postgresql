@@ -38,8 +38,8 @@ func (r *roleUsecase) Store(c context.Context, ro *domain.Role) (err error) {
 		return domain.ErrConflict
 	}
 	now := time.Now()
-	ro.CreatedAt = now
-	ro.UpdatedAt = now
+	ro.CreatedAt = &now
+	ro.UpdatedAt = &now
 	err = r.roleRepo.Store(ctx, ro)
 	return
 }

@@ -6,29 +6,40 @@ import (
 
 type User struct {
 	Base
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
-	Name     string `json:"name" `
-	Role     Role   `json:"role"`
+	Username string     `json:"username,omitempty" validate:"required"`
+	Email    string     `json:"email,omitempty" validate:"required"`
+	Password string     `json:"password,omitempty" validate:"required"`
+	Name     string     `json:"name,omitempty"`
+	Roles    []UserRole `json:"roles,omitempty"`
+}
+
+type UserUpdate struct {
+	Base
+	Username string `json:"username,omitempty"`
+	Email    string `json:"email,omitempty" validate:"email"`
+	Password string `json:"password,omitempty"`
+	Name     string `json:"name,omitempty"`
 }
 
 type Auth struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	UsernameOrEmail string `json:"username_or_email" validate:"required"`
+	Password        string `json:"password" validate:"required"`
 }
 
 type AuthUsecase interface {
 	Login(ctx context.Context, auth Auth) (string, error)
 }
-type AuthRepository interface {
-	Login(ctx context.Context, username string) error
-}
-type UseruUsecase interface {
-	GetOneByUsername(ctx context.Context, username string) (User, error)
-	Store(context.Context, *User) error
+type UserUsecase interface {
+	GetOneByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (User, error)
+	GetByID(ctx context.Context, id string) (User, error)
+	Store(context.Context, *User, *UserRole) error
+	Update(ctx context.Context, a *User) error
 }
 
 type UserRepository interface {
-	GetOneByUsername(ctx context.Context, username string) (User, error)
+	GetOneByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (User, error)
+	GetOne(ctx context.Context, query string, args ...any) (User, error)
+	GetByID(ctx context.Context, id string) (User, error)
 	Store(ctx context.Context, a *User) error
+	Update(ctx context.Context, a *User) error
 }

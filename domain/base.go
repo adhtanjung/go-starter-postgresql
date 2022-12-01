@@ -7,8 +7,8 @@ import (
 )
 
 type Base struct {
-	ID        string         `json:"id"`
-	UpdatedAt time.Time      `json:"updated_at" `
-	CreatedAt time.Time      `json:"created_at" `
-	DeletedAt mysql.NullTime `json:"deleted_at" `
+	ID        string          `json:"id,omitempty" param:"id"`
+	UpdatedAt *time.Time      `json:"updated_at,omitempty"`
+	CreatedAt *time.Time      `json:"created_at,omitempty"`
+	DeletedAt *mysql.NullTime `json:"deleted_at,omitempty"`
 }

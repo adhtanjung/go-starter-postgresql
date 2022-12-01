@@ -14,10 +14,12 @@ import (
 
 type authUsecase struct {
 	userRepo       domain.UserRepository
+	userRoleRepo   domain.UserRoleRepository
 	contextTimeout time.Duration
 }
-type jwtCustomClaims struct {
-	User domain.User `json:"user"`
+type JwtCustomClaims struct {
+	UserID string            `json:"id"`
+	Roles  []domain.UserRole `json:"roles"`
 	jwt.StandardClaims
 }
 type CustomError interface {
@@ -32,9 +34,10 @@ func (a *AuthError) Error() string {
 	return fmt.Sprintf("auth error: %s", a.Message)
 }
 
-func NewAuthUsecase(u domain.UserRepository, timeout time.Duration) domain.AuthUsecase {
+func NewAuthUsecase(u domain.UserRepository, ur domain.UserRoleRepository, timeout time.Duration) domain.AuthUsecase {
 	return &authUsecase{
 		userRepo:       u,
+		userRoleRepo:   ur,
 		contextTimeout: timeout,
 	}
 }
@@ -42,18 +45,24 @@ func NewAuthUsecase(u domain.UserRepository, timeout time.Duration) domain.AuthU
 func (a *authUsecase) Login(c context.Context, auth domain.Auth) (string, error) {
 	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
 	defer cancel()
-	user, err := a.userRepo.GetOneByUsername(ctx, auth.Username)
-
+	user, err := a.userRepo.GetOneByUsernameOrEmail(ctx, auth.UsernameOrEmail)
 	if err != nil {
 		fmt.Printf("fetching user failed: '%s'", err.Error())
 	}
+	userRoles, err := a.userRoleRepo.GetByUserID(ctx, user.ID)
+	if err != nil {
+		fmt.Printf("fetching user failed: '%s'", err.Error())
+	}
+
 	if match := helper.CheckPasswordHash(auth.Password, user.Password); !match {
 		return "", &AuthError{"incorrect username or password"}
 	}
+	user.Roles = userRoles
 	// Set custom claims
 
-	claims := &jwtCustomClaims{
-		user,
+	claims := &JwtCustomClaims{
+		user.ID,
+		user.Roles,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
 		},
