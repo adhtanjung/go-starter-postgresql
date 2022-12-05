@@ -1,5 +1,5 @@
 # Builder
-FROM golang:1.14.2-alpine3.11 as builder
+FROM golang:1.19.3-alpine3.16 as builder
 
 RUN apk update && apk upgrade && \
     apk --update add git make
@@ -15,12 +15,13 @@ FROM alpine:latest
 
 RUN apk update && apk upgrade && \
     apk --update --no-cache add tzdata && \
-    mkdir /app 
+    mkdir /app
 
-WORKDIR /app 
+WORKDIR /app
 
 EXPOSE 9090
 
 COPY --from=builder /app/engine /app
+COPY --from=builder /app/auth_model.conf /app
 
 CMD /app/engine

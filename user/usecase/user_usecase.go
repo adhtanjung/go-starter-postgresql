@@ -4,29 +4,35 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"io"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-boilerplate/pkg/helpers"
 	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
 )
 
 type userUsecase struct {
-	userRepo       domain.UserRepository
-	roleRepo       domain.RoleRepository
-	userRoleRepo   domain.UserRoleRepository
-	casbinRepo     domain.CasbinRBACRepository
-	contextTimeout time.Duration
+	userRepo         domain.UserRepository
+	roleRepo         domain.RoleRepository
+	userRoleRepo     domain.UserRoleRepository
+	casbinRepo       domain.CasbinRBACRepository
+	userFilepathRepo domain.UserFilepathRepository
+	contextTimeout   time.Duration
 }
 
-func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, ur domain.UserRoleRepository, cas domain.CasbinRBACRepository, timeout time.Duration) domain.UserUsecase {
+func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, ur domain.UserRoleRepository, cas domain.CasbinRBACRepository, uf domain.UserFilepathRepository, timeout time.Duration) domain.UserUsecase {
 	return &userUsecase{
-		userRepo:       u,
-		roleRepo:       r,
-		userRoleRepo:   ur,
-		casbinRepo:     cas,
-		contextTimeout: timeout,
+		userRepo:         u,
+		roleRepo:         r,
+		userRoleRepo:     ur,
+		casbinRepo:       cas,
+		userFilepathRepo: uf,
+		contextTimeout:   timeout,
 	}
 
 }
@@ -98,7 +104,6 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	res, err := u.userRepo.GetByID(ctx, user.ID)
-	log.Println(res.Username)
 	if err != nil {
 		return
 	}
@@ -116,12 +121,57 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 	if user.Name != "" {
 		res.Name = user.Name
 	}
-	log.Println(user.Username)
 	now := time.Now()
+	if user.File != nil {
+		allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+		if cond := allowedExts[filepath.Ext(user.File.Filename)]; cond {
+			src, err := user.File.Open()
+			if err != nil {
+				return err
+			}
+			defer src.Close()
+
+			folderPath := "public/user"
+			folder := "user/"
+			// Destination
+			err = os.MkdirAll(folderPath, os.ModePerm)
+			if err != nil {
+				return err
+			}
+			uuid := helpers.GenerateUUID()
+			// Destination
+			extension := filepath.Ext(user.File.Filename)
+			originalName := strings.TrimSuffix(user.File.Filename, extension)
+			fileLocation := filepath.Join(folderPath, originalName+"-"+uuid+extension)
+			pathToDb := filepath.Join(folder, originalName+"-"+uuid+extension)
+			targetFile, err := os.OpenFile(fileLocation, os.O_WRONLY|os.O_CREATE, 0666)
+			if err != nil {
+				return err
+			}
+			defer targetFile.Close()
+
+			// Copy
+			if _, err = io.Copy(targetFile, src); err != nil {
+				return err
+			}
+
+			userFilepath := &domain.UserFilepath{Filename: originalName, Mimetype: extension, Path: pathToDb, User: &res, Base: domain.Base{CreatedAt: &now, UpdatedAt: &now}}
+
+			user.ProfilePic = fileLocation
+			err = u.userFilepathRepo.Store(ctx, userFilepath)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.New("invalid extension")
+		}
+
+	}
+
 	user = &res
 	user.UpdatedAt = &now
-
 	return u.userRepo.Update(ctx, user)
+	// return nil
 
 }
 func (u *userUsecase) GetByID(c context.Context, id string) (res domain.User, err error) {

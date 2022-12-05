@@ -22,31 +22,11 @@ func NewUserHandler(e *echo.Group, us domain.UserUsecase) {
 		UUsecase: us,
 	}
 
-	// e.GET("/users", handler.FetchUser)
 	e.POST("/users", handler.Store)
 	e.PUT("/users/:id", handler.Update)
 	e.GET("/users/:id", handler.GetByID)
-	// e.GET("/users/:id")
-	// e.DELETE("/users/:id")
 
 }
-
-// func (u *UserHandler) FetchUser(c echo.Context) error {
-// 	numS := c.QueryParam("num")
-// 	num, _ := strconv.Atoi(numS)
-// 	cursor := c.QueryParam("cursor")
-// 	ctx := c.Request().Context()
-
-// 	listUs, nextCursor, err := u.UUsecase.Fetch(ctx, cursor, int64(num))
-// 	if err != nil {
-// 		return c.JSON(getStatusCode(err), ResponseError{
-// 			Message: err.Error(),
-// 		})
-// 	}
-// 	c.Response().Header().Set(`X-Cursor`, nextCursor)
-// 	return c.JSON(http.StatusOK, listUs)
-
-// }
 
 func (u *UserHandler) Store(c echo.Context) (err error) {
 	var user domain.User
@@ -84,6 +64,10 @@ func (u *UserHandler) GetByID(c echo.Context) (err error) {
 
 func (u *UserHandler) Update(c echo.Context) (err error) {
 	var user domain.User
+	file, _ := c.FormFile("profile_pic")
+	if file != nil {
+		user.File = file
+	}
 	err = c.Bind(&user)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())

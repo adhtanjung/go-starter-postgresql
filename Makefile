@@ -15,11 +15,12 @@ clean:
 docker:
 	docker build -t go-clean-arch .
 
-run:
-	docker-compose up --build -d
-
 stop:
 	docker-compose down
+run: stop
+	docker-compose up --build -d
+up: stop
+	docker-compose up -d
 
 serve:
 	go run app/main.go

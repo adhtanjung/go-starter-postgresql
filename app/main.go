@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -14,6 +17,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	jwt "github.com/golang-jwt/jwt/v4"
 
+	middlewares "github.com/adhtanjung/go-boilerplate/pkg/middlewares"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
@@ -131,8 +135,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	casbinDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/", dbUser, dbPass, dbHost, dbPort)
-	a, _ := gormadapter.NewAdapter("mysql", casbinDsn) // Your driver and data source.
+	casbinDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/boilerplate", dbUser, dbPass, dbHost, dbPort)
+	a, _ := gormadapter.NewAdapter("mysql", casbinDsn, true) // Your driver and data source.
+
 	en, _ := casbin.NewEnforcer("auth_model.conf", a)
 	enforcer := Enforcer{enforcer: en}
 
@@ -161,24 +166,86 @@ func main() {
 			return token, nil
 		},
 	}
+	// log := logrus.New()
 
 	e := echo.New()
+	e.Static("/", "public")
 	middL := _articleHttpDeliveryMiddleware.InitMiddleware()
+	// e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middlewares.MiddlewareLogging)
 
+	// e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+	// 	LogURI:       true,
+	// 	LogStatus:    true,
+	// 	LogMethod:    true,
+	// 	LogRemoteIP:  true,
+	// 	LogUserAgent: true,
+	// 	LogError:     true,
+	// 	LogRoutePath: true,
+	// 	LogValuesFunc: func(c echo.Context, values middleware.RequestLoggerValues) error {
+	// 		log.WithFields(logrus.Fields{
+	// 			"method":     values.Method,
+	// 			"URI":        values.URI,
+	// 			"status":     values.Status,
+	// 			"error":      values.Error,
+	// 			"user_agent": values.UserAgent,
+	// 			"remote_ip":  values.RemoteIP,
+	// 			"route_path": values.RoutePath,
+	// 		}).Info("request")
+	// 		return nil
+	// 	},
+	// }))
 	apiGroup := e.Group("/api")
 	apiGroup.Use(middleware.JWTWithConfig(config))
 	apiGroup.Use(middL.CORS)
 	apiGroup.Use(enforcer.Enforce)
 
+	e.POST("/upload", func(c echo.Context) error {
+		// Read form fields
+		name := c.FormValue("name")
+		email := c.FormValue("email")
+
+		//-----------
+		// Read file
+		//-----------
+
+		// Source
+		file, err := c.FormFile("file")
+		if err != nil {
+			return err
+		}
+		src, err := file.Open()
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		folderPath := "public/"
+		// Destination
+		dst, err := os.Create(folderPath + file.Filename)
+		if err != nil {
+			return err
+		}
+		defer dst.Close()
+
+		// Copy
+		if _, err = io.Copy(dst, src); err != nil {
+			return err
+		}
+
+		return c.HTML(http.StatusOK, fmt.Sprintf("<p>File %s uploaded successfully with fields name=%s and email=%s.</p>", file.Filename, name, email))
+	})
 	authorRepo := _authorRepo.NewMysqlAuthorRepository(dbConn)
 	ar := _articleRepo.NewMysqlArticleRepository(dbConn)
 	userRepo := _userRepo.NewMysqlUserRepository(dbConn, en)
+	userFilepathRepo := _userRepo.NewMysqlUserFilepathRepository(dbConn)
 	roleRepo := _roleRepo.NewMysqlRoleRepository(dbConn)
 	userRoleRepo := _userRoleRepo.NewMysqlUserRoleRepository(dbConn)
 	casbinRepo := _casbinRepo.NewMysqlCasbinRepository(en)
 
 	timeoutContext := time.Duration(viper.GetInt("context.timeout")) * time.Second
-	us := _userUcase.NewUserUsecase(userRepo, roleRepo, userRoleRepo, casbinRepo, timeoutContext)
+	us := _userUcase.NewUserUsecase(userRepo, roleRepo, userRoleRepo, casbinRepo, userFilepathRepo, timeoutContext)
 	ru := _roleUcase.NewRoleUsecase(roleRepo, timeoutContext)
 	auth := _authUcase.NewAuthUsecase(userRepo, userRoleRepo, timeoutContext)
 	au := _articleUcase.NewArticleUsecase(ar, authorRepo, timeoutContext)
@@ -188,5 +255,14 @@ func main() {
 	_userHttpDelivery.NewUserHandler(apiGroup, us)
 	_roleHttpDelivery.NewRoleHandler(apiGroup, ru)
 
-	log.Fatal(e.Start(viper.GetString("server.address")))
+	e.HTTPErrorHandler = middlewares.ErrorHandler
+	lock := make(chan error)
+	time.Sleep(1 * time.Millisecond)
+	middlewares.MakeLogEntry(nil).Warning("application started without ssl/tls enabled")
+	go func(lock chan error) { lock <- e.Start(viper.GetString("server.address")) }(lock)
+	errN := <-lock
+	if errN != nil {
+		middlewares.MakeLogEntry(nil).Panic("failed to start application")
+	}
+	// log.Fatal(e.Start(viper.GetString("server.address")))
 }

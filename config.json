@@ -13,13 +13,6 @@
 		"pass": "password",
 		"name": "boilerplate"
 	},
-	"database_casbin": {
-		"host": "localhost",
-		"port": "3306",
-		"user": "root",
-		"pass": "password",
-		"name": "casbin"
-	},
 	"secret": {
 		"jwt": "jwt_secret_key_boilerplate"
 	}

@@ -2,15 +2,18 @@ package domain
 
 import (
 	"context"
+	"mime/multipart"
 )
 
 type User struct {
 	Base
-	Username string     `json:"username,omitempty" validate:"required"`
-	Email    string     `json:"email,omitempty" validate:"required"`
-	Password string     `json:"password,omitempty" validate:"required"`
-	Name     string     `json:"name,omitempty"`
-	Roles    []UserRole `json:"roles,omitempty"`
+	Username   string     `json:"username,omitempty" validate:"required" form:"username"`
+	Email      string     `json:"email,omitempty" validate:"required" form:"email"`
+	Password   string     `json:"password,omitempty" validate:"required" form:"password"`
+	Name       string     `json:"name,omitempty" form:"name"`
+	Roles      []UserRole `json:"roles,omitempty" form:"roles"`
+	ProfilePic string
+	File       *multipart.FileHeader
 }
 
 type UserUpdate struct {
@@ -42,4 +45,17 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id string) (User, error)
 	Store(ctx context.Context, a *User) error
 	Update(ctx context.Context, a *User) error
+}
+
+type UserFilepath struct {
+	Base
+	Filename string `json:"filename"`
+	Mimetype string `json:"mimetype"`
+	Path     string `json:"path"`
+	User     *User  `json:"user"`
+}
+
+type UserFilepathRepository interface {
+	Store(ctx context.Context, f *UserFilepath) error
+	// GetByUserID(ctx context.Context, userID string) ([]UserFilepath, error)
 }

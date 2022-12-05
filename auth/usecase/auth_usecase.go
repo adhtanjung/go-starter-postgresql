@@ -51,6 +51,7 @@ func (a *authUsecase) Login(c context.Context, auth domain.Auth) (string, error)
 	}
 	userRoles, err := a.userRoleRepo.GetByUserID(ctx, user.ID)
 	if err != nil {
+		// logrus.Error(err.Error())
 		fmt.Printf("fetching user failed: '%s'", err.Error())
 	}
 

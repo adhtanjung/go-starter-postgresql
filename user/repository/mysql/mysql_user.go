@@ -15,6 +15,31 @@ type mysqlUserRepository struct {
 	Conn   *sql.DB
 	Casbin *casbin.Enforcer
 }
+type mysqlUserFilepathRepository struct {
+	Conn *sql.DB
+}
+
+// col returns a reference for a column of a userfilepath
+func UserFilepathCol(colname string, u *domain.UserFilepath) interface{} {
+	switch colname {
+	case "id":
+		return &u.ID
+	case "filename":
+		return &u.Filename
+	case "mimetype":
+		return &u.Mimetype
+	case "path":
+		return &u.Path
+	case "created_at":
+		return &u.CreatedAt
+	case "updated_at":
+		return &u.UpdatedAt
+	case "deleted_at":
+		return &u.DeletedAt
+	default:
+		panic("unknown column " + colname)
+	}
+}
 
 // Usercol returns a reference for a column of a User
 func UserCol(colname string, u *domain.User) interface{} {
@@ -52,6 +77,52 @@ func UserCol(colname string, u *domain.User) interface{} {
 
 func NewMysqlUserRepository(Conn *sql.DB, Casbin *casbin.Enforcer) domain.UserRepository {
 	return &mysqlUserRepository{Conn, Casbin}
+}
+func NewMysqlUserFilepathRepository(Conn *sql.DB) domain.UserFilepathRepository {
+	return &mysqlUserFilepathRepository{Conn}
+}
+func (m *mysqlUserFilepathRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.UserFilepath, err error) {
+	rows, err := m.Conn.QueryContext(ctx, query, args...)
+
+	if err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+
+	defer func() {
+		errRow := rows.Close()
+		if errRow != nil {
+			logrus.Error(errRow)
+		}
+	}()
+
+	// get the column names from the query
+	var columns []string
+	columns, err = rows.Columns()
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	colNum := len(columns)
+
+	result = make([]domain.UserFilepath, 0)
+	for rows.Next() {
+		t := domain.UserFilepath{}
+		cols := make([]interface{}, colNum)
+		for i := 0; i < colNum; i++ {
+			cols[i] = UserFilepathCol(columns[i], &t)
+		}
+		err = rows.Scan(
+			cols...,
+		)
+		if err != nil {
+			logrus.Error(err)
+			return nil, err
+		}
+		result = append(result, t)
+	}
+	return result, nil
+
 }
 
 func (m *mysqlUserRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.User, err error) {
@@ -96,6 +167,20 @@ func (m *mysqlUserRepository) fetch(ctx context.Context, query string, args ...i
 	}
 	return result, nil
 
+}
+func (m *mysqlUserFilepathRepository) Store(ctx context.Context, u *domain.UserFilepath) (err error) {
+	uuid := helper.GenerateUUID()
+	query := `INSERT user_filepath SET id =?, filename=?, mimetype=?, path=?, user_id=?, updated_at=?, created_at=?, deleted_at=?`
+	stmt, err := m.Conn.PrepareContext(ctx, query)
+	if err != nil {
+		return
+	}
+	_, err = stmt.ExecContext(ctx, uuid, u.Filename, u.Mimetype, u.Path, u.User.ID, u.UpdatedAt, u.CreatedAt, nil)
+	if err != nil {
+		return
+	}
+	u.ID = uuid
+	return
 }
 
 func (m *mysqlUserRepository) Store(ctx context.Context, u *domain.User) (err error) {
