@@ -33,6 +33,8 @@ func (r *roleUsecase) GetByName(c context.Context, name string) (res domain.Role
 func (r *roleUsecase) Store(c context.Context, ro *domain.Role) (err error) {
 	ctx, cancel := context.WithTimeout(c, r.contextTimeout)
 	defer cancel()
+	// span, _ := apm.StartSpan(c, "request to server api", "request")
+	// defer span.End()
 	isRoleExists, _ := r.GetByName(ctx, ro.Name)
 	if isRoleExists != (domain.Role{}) {
 		return domain.ErrConflict

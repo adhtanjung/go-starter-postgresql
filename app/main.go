@@ -1,10 +1,8 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -16,19 +14,23 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	_ "github.com/go-sql-driver/mysql"
 	jwt "github.com/golang-jwt/jwt/v4"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
+	"github.com/adhtanjung/go-boilerplate/domain"
 	middlewares "github.com/adhtanjung/go-boilerplate/pkg/middlewares"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
+	"go.elastic.co/apm/module/apmechov4/v2"
 
-	_articleHttpDelivery "github.com/adhtanjung/go-boilerplate/article/delivery/http"
+	// _articleHttpDelivery "github.com/adhtanjung/go-boilerplate/article/delivery/http"
 	_articleHttpDeliveryMiddleware "github.com/adhtanjung/go-boilerplate/article/delivery/http/middleware"
-	_articleRepo "github.com/adhtanjung/go-boilerplate/article/repository/mysql"
-	_articleUcase "github.com/adhtanjung/go-boilerplate/article/usecase"
+	// _articleRepo "github.com/adhtanjung/go-boilerplate/article/repository/mysql"
+	// _articleUcase "github.com/adhtanjung/go-boilerplate/article/usecase"
 	_authHttpDelivery "github.com/adhtanjung/go-boilerplate/auth/delivery/http"
 	_authUcase "github.com/adhtanjung/go-boilerplate/auth/usecase"
-	_authorRepo "github.com/adhtanjung/go-boilerplate/author/repository/mysql"
 
 	_casbinRepo "github.com/adhtanjung/go-boilerplate/casbin/repository/mysql"
 	_roleHttpDelivery "github.com/adhtanjung/go-boilerplate/role/delivery/http"
@@ -119,22 +121,17 @@ func main() {
 	val.Add("parseTime", "1")
 	val.Add("loc", "Asia/Jakarta")
 	dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
-	dbConn, err := sql.Open(`mysql`, dsn)
+	dbConn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to connect to database. \n", err)
+		os.Exit(2)
 	}
-	err = dbConn.Ping()
-	if err != nil {
-		log.Fatal(err)
+	if err := dbConn.AutoMigrate(&domain.User{}, &domain.UserFilepath{}, &domain.UserRole{}); err != nil {
+		log.Println("migration error", err)
 	}
-
-	defer func() {
-		err := dbConn.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
 	casbinDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/boilerplate", dbUser, dbPass, dbHost, dbPort)
 	a, _ := gormadapter.NewAdapter("mysql", casbinDsn, true) // Your driver and data source.
 
@@ -166,14 +163,24 @@ func main() {
 			return token, nil
 		},
 	}
-	// log := logrus.New()
-
 	e := echo.New()
+	// Add a healthcheck endpoint
+	e.GET("/healthcheck", func(c echo.Context) error {
+		// Return a 200 OK status code and a "healthy" message
+		return c.String(http.StatusOK, "healthy")
+	})
+	e.GET("/", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, `
+			<h1>Welcome to Echo!</h1>
+		`)
+	})
+
 	e.Static("/", "public")
 	middL := _articleHttpDeliveryMiddleware.InitMiddleware()
 	// e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middlewares.MiddlewareLogging)
+	e.Use(apmechov4.Middleware())
 
 	// e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 	// 	LogURI:       true,
@@ -200,44 +207,8 @@ func main() {
 	apiGroup.Use(middleware.JWTWithConfig(config))
 	apiGroup.Use(middL.CORS)
 	apiGroup.Use(enforcer.Enforce)
-
-	e.POST("/upload", func(c echo.Context) error {
-		// Read form fields
-		name := c.FormValue("name")
-		email := c.FormValue("email")
-
-		//-----------
-		// Read file
-		//-----------
-
-		// Source
-		file, err := c.FormFile("file")
-		if err != nil {
-			return err
-		}
-		src, err := file.Open()
-		if err != nil {
-			return err
-		}
-		defer src.Close()
-
-		folderPath := "public/"
-		// Destination
-		dst, err := os.Create(folderPath + file.Filename)
-		if err != nil {
-			return err
-		}
-		defer dst.Close()
-
-		// Copy
-		if _, err = io.Copy(dst, src); err != nil {
-			return err
-		}
-
-		return c.HTML(http.StatusOK, fmt.Sprintf("<p>File %s uploaded successfully with fields name=%s and email=%s.</p>", file.Filename, name, email))
-	})
-	authorRepo := _authorRepo.NewMysqlAuthorRepository(dbConn)
-	ar := _articleRepo.NewMysqlArticleRepository(dbConn)
+	// authorRepo := _authorRepo.NewMysqlAuthorRepository(dbConn)
+	// ar := _articleRepo.NewMysqlArticleRepository(dbConn)
 	userRepo := _userRepo.NewMysqlUserRepository(dbConn, en)
 	userFilepathRepo := _userRepo.NewMysqlUserFilepathRepository(dbConn)
 	roleRepo := _roleRepo.NewMysqlRoleRepository(dbConn)
@@ -248,13 +219,18 @@ func main() {
 	us := _userUcase.NewUserUsecase(userRepo, roleRepo, userRoleRepo, casbinRepo, userFilepathRepo, timeoutContext)
 	ru := _roleUcase.NewRoleUsecase(roleRepo, timeoutContext)
 	auth := _authUcase.NewAuthUsecase(userRepo, userRoleRepo, timeoutContext)
-	au := _articleUcase.NewArticleUsecase(ar, authorRepo, timeoutContext)
+	// au := _articleUcase.NewArticleUsecase(ar, authorRepo, timeoutContext)
 
 	_authHttpDelivery.NewAuthHandler(e, auth)
-	_articleHttpDelivery.NewArticleHandler(e, au)
+	// _articleHttpDelivery.NewArticleHandler(e, au)
 	_userHttpDelivery.NewUserHandler(apiGroup, us)
 	_roleHttpDelivery.NewRoleHandler(apiGroup, ru)
 
+	// s := http.Server{
+	// 	Addr:      ":9090",
+	// 	Handler:   e, // set Echo as handler
+	// 	TLSConfig: tlsConfig,
+	// }
 	e.HTTPErrorHandler = middlewares.ErrorHandler
 	lock := make(chan error)
 	time.Sleep(1 * time.Millisecond)
@@ -264,5 +240,8 @@ func main() {
 	if errN != nil {
 		middlewares.MakeLogEntry(nil).Panic("failed to start application")
 	}
+	// if err := s.ListenAndServeTLS("server.crt", "server.key"); err != http.ErrServerClosed {
+	// 	e.Logger.Fatal(err)
+	// }
 	// log.Fatal(e.Start(viper.GetString("server.address")))
 }

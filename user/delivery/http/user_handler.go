@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	validator "gopkg.in/go-playground/validator.v9"
@@ -54,8 +55,11 @@ func (u *UserHandler) GetByID(c echo.Context) (err error) {
 		return echo.NewHTTPError(http.StatusBadRequest, echo.Map{"message": "id is required"})
 	}
 	ctx := c.Request().Context()
-
-	user, err := u.UUsecase.GetByID(ctx, id)
+	toUUIDType, err := uuid.Parse(id)
+	if err != nil {
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+	}
+	user, err := u.UUsecase.GetByID(ctx, toUUIDType)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
@@ -76,7 +80,11 @@ func (u *UserHandler) Update(c echo.Context) (err error) {
 	if len(id) <= 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, echo.Map{"message": "id is required"})
 	}
-	user.ID = id
+	toUUIDType, err := uuid.Parse(id)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"message": "invalid uuid"})
+	}
+	user.ID = toUUIDType
 	ctx := c.Request().Context()
 	err = u.UUsecase.Update(ctx, &user)
 	if err != nil {

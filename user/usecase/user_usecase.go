@@ -14,6 +14,7 @@ import (
 	"github.com/adhtanjung/go-boilerplate/domain"
 	"github.com/adhtanjung/go-boilerplate/pkg/helpers"
 	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
+	"github.com/google/uuid"
 )
 
 type userUsecase struct {
@@ -42,9 +43,9 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	var emptyUser domain.User
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-	queryUsername := `SELECT id FROM user WHERE username = ?`
-	queryEmail := `SELECT id FROM user WHERE email = ?`
-	isUsernameTaken, err := u.userRepo.GetOne(ctx, queryUsername, m.Username)
+	argsUsername := map[string]interface{}{"username": m.Username}
+	argsEmail := map[string]interface{}{"email": m.Email}
+	isUsernameTaken, err := u.userRepo.GetOne(ctx, argsUsername)
 	if err != nil {
 		fmt.Printf("fetch username failed, error: '%s'", err.Error())
 		return
@@ -53,7 +54,7 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 		err = errors.New("username already taken")
 		return
 	}
-	isEmailTaken, err := u.userRepo.GetOne(ctx, queryEmail, m.Email)
+	isEmailTaken, err := u.userRepo.GetOne(ctx, argsEmail)
 	if err != nil {
 		fmt.Printf("fetch user email failed, error: '%s'", err.Error())
 		return
@@ -67,7 +68,7 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 		fmt.Printf("password hashing failed, error: '%s'", err.Error())
 	}
 
-	defaultRole, err := u.roleRepo.GetByName(ctx, "user")
+	defaultRole, err := u.roleRepo.GetByName(ctx, "superadmin")
 	if err != nil {
 		fmt.Printf("fetch default role failed, error: '%s'", err.Error())
 		return
@@ -82,8 +83,8 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	err = u.userRepo.Store(ctx, m)
 	ur.CreatedAt = &now
 	ur.UpdatedAt = &now
-	ur.Role = defaultRole
-	ur.User = m
+	ur.RoleID = defaultRole.ID
+	ur.UserID = m.ID
 	err = u.userRoleRepo.Store(ctx, ur)
 	return
 }
@@ -92,8 +93,8 @@ func (u *userUsecase) GetOneByUsernameOrEmail(c context.Context, usernameOrEmail
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	res, err = u.userRepo.GetOneByUsernameOrEmail(ctx, usernameOrEmail)
-	userRole, err := u.userRoleRepo.GetByUserID(ctx, res.ID)
-	res.Roles = userRole
+	// userRole, err := u.userRoleRepo.GetByUserID(ctx, res.ID)
+	// res.UserRoles = userRole
 	if err != nil {
 		return
 	}
@@ -155,7 +156,7 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 				return err
 			}
 
-			userFilepath := &domain.UserFilepath{Filename: originalName, Mimetype: extension, Path: pathToDb, User: &res, Base: domain.Base{CreatedAt: &now, UpdatedAt: &now}}
+			userFilepath := &domain.UserFilepath{Filename: originalName, Mimetype: extension, Path: pathToDb, UserID: res.ID, Base: domain.Base{CreatedAt: &now, UpdatedAt: &now}}
 
 			user.ProfilePic = fileLocation
 			err = u.userFilepathRepo.Store(ctx, userFilepath)
@@ -169,12 +170,11 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 	}
 
 	user = &res
-	user.UpdatedAt = &now
 	return u.userRepo.Update(ctx, user)
 	// return nil
 
 }
-func (u *userUsecase) GetByID(c context.Context, id string) (res domain.User, err error) {
+func (u *userUsecase) GetByID(c context.Context, id uuid.UUID) (res domain.User, err error) {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	res, err = u.userRepo.GetByID(ctx, id)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 
 	"github.com/adhtanjung/go-boilerplate/domain"
@@ -18,8 +19,9 @@ type authUsecase struct {
 	contextTimeout time.Duration
 }
 type JwtCustomClaims struct {
-	UserID string            `json:"id"`
+	UserID uuid.UUID         `json:"id"`
 	Roles  []domain.UserRole `json:"roles"`
+	// User domain.User `json:"data"`
 	jwt.StandardClaims
 }
 type CustomError interface {
@@ -49,21 +51,34 @@ func (a *authUsecase) Login(c context.Context, auth domain.Auth) (string, error)
 	if err != nil {
 		fmt.Printf("fetching user failed: '%s'", err.Error())
 	}
-	userRoles, err := a.userRoleRepo.GetByUserID(ctx, user.ID)
+	// userRoles, err := a.userRoleRepo.GetByUserID(ctx, user.ID)
+	// log.Println("userroles:", userRoles)
 	if err != nil {
 		// logrus.Error(err.Error())
-		fmt.Printf("fetching user failed: '%s'", err.Error())
+		fmt.Printf("fetching user role failed: '%s'", err.Error())
+		return "", &AuthError{"fetching user role failed"}
 	}
 
 	if match := helper.CheckPasswordHash(auth.Password, user.Password); !match {
 		return "", &AuthError{"incorrect username or password"}
 	}
-	user.Roles = userRoles
+	// convert the struct to a map
+	m := map[string]interface{}{
+		"ID":    user.ID,
+		"Roles": user.UserRoles,
+	}
+	user = domain.User{
+		Base:      domain.Base{ID: m["ID"].(uuid.UUID)},
+		UserRoles: m["Roles"].([]domain.UserRole),
+	}
+	// delete(m, "Password")
+
+	// user.Roles = userRoles
 	// Set custom claims
 
 	claims := &JwtCustomClaims{
 		user.ID,
-		user.Roles,
+		user.UserRoles,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
 		},

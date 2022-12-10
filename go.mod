@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/bxcodec/faker v1.4.2
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-sql-driver/mysql v1.7.0
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/uuid v1.3.0
 	github.com/labstack/echo/v4 v4.9.1
@@ -18,7 +18,11 @@ require (
 )
 
 require (
+	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/casbin/gorm-adapter/v3 v3.13.0 // indirect
+	github.com/elastic/go-licenser v0.4.1 // indirect
+	github.com/elastic/go-sysinfo v1.9.0 // indirect
+	github.com/elastic/go-windows v1.0.1 // indirect
 	github.com/glebarez/go-sqlite v1.19.1 // indirect
 	github.com/glebarez/sqlite v1.5.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
@@ -31,18 +35,33 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.12.0 // indirect
 	github.com/jackc/pgx/v4 v4.17.2 // indirect
+	github.com/jcchavezs/porto v0.4.0 // indirect
+	github.com/jinzhu/gorm v1.9.10 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/microsoft/go-mssqldb v0.17.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
+	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
+	go.elastic.co/apm/module/apmhttp v1.15.0 // indirect
+	go.elastic.co/apm/module/apmhttp/v2 v2.2.0 // indirect
+	go.elastic.co/apm/module/apmsql/v2 v2.2.0 // indirect
+	go.elastic.co/apm/v2 v2.2.0 // indirect
+	go.elastic.co/fastjson v1.1.0 // indirect
+	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
+	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/tools v0.4.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gorm.io/driver/mysql v1.4.1 // indirect
+	gorm.io/driver/mysql v1.4.4 // indirect
 	gorm.io/driver/postgres v1.4.4 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
-	gorm.io/gorm v1.24.0 // indirect
+	gorm.io/gorm v1.24.2 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
+	howett.net/plist v1.0.0 // indirect
 	modernc.org/libc v1.19.0 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.4.0 // indirect
@@ -76,10 +95,15 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	go.elastic.co/apm v1.15.0
+	go.elastic.co/apm/module/apmechov4 v1.15.0
+	go.elastic.co/apm/module/apmechov4/v2 v2.2.0
+	go.elastic.co/apm/module/apmgorm/v2 v2.2.0
+	go.elastic.co/apm/module/apmgormv2/v2 v2.2.0
+	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/term v0.3.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect

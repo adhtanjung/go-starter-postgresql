@@ -14,7 +14,11 @@ Rule of Clean Architecture by Uncle Bob
 
 More at https://8thlight.com/blog/uncle-bob/2012/08/13/the-clean-architecture.html
 
-This project has 4 Domain layer :
+This project has  4 Domain layer :
+ * Models Layer
+ * Repository Layer
+ * Usecase Layer
+ * Delivery Layer
 
 - Models Layer
 - Repository Layer
