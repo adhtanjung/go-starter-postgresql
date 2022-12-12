@@ -25,14 +25,36 @@ type UserUpdate struct {
 	Password string `json:"password,omitempty"`
 	Name     string `json:"name,omitempty"`
 }
+type Query struct {
+	Args   string
+	Clause string
+}
+type UserQueryArgs struct {
+	SelectClause
+	WhereClause
+}
+type SelectClause struct {
+	User      string
+	UserRoles string
+	Role      string
+}
+type WhereClause struct {
+	UserRoles Query
+	Role      Query
+	User      Query
+}
 
 type Auth struct {
 	UsernameOrEmail string `json:"username_or_email" validate:"required"`
 	Password        string `json:"password" validate:"required"`
 }
+type ForgotPassword struct {
+	Email string `json:"email" validate:"required,email"`
+}
 
 type AuthUsecase interface {
 	Login(ctx context.Context, auth Auth) (string, error)
+	ForgotPassword(ctx context.Context, email string) error
 }
 type UserUsecase interface {
 	GetOneByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (User, error)
@@ -43,7 +65,7 @@ type UserUsecase interface {
 
 type UserRepository interface {
 	GetOneByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (User, error)
-	GetOne(ctx context.Context, args map[string]interface{}) (User, error)
+	GetOne(ctx context.Context, args UserQueryArgs) (User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (User, error)
 	Store(ctx context.Context, a *User) error
 	Update(ctx context.Context, a *User) error

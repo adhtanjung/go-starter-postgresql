@@ -15,5 +15,12 @@
 	},
 	"secret": {
 		"jwt": "jwt_secret_key_boilerplate"
+	},
+	"smtp": {
+		"host": "smtp.gmail.com",
+		"port": 587,
+		"sender_name": "PT. Anju Jaya <adhtanjung@gmail.com>",
+		"email": "adhtanjung@gmail.com",
+		"password": "xsishohfkticbxjj"
 	}
 }

@@ -43,9 +43,12 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	var emptyUser domain.User
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-	argsUsername := map[string]interface{}{"username": m.Username}
-	argsEmail := map[string]interface{}{"email": m.Email}
-	isUsernameTaken, err := u.userRepo.GetOne(ctx, argsUsername)
+	// argsUsername := map[string]interface{}{"username": m.Username}
+	// argsEmail := map[string]interface{}{"email": m.Email}
+
+	queryUsername := domain.UserQueryArgs{WhereClause: domain.WhereClause{User: domain.Query{Args: m.Username, Clause: "username = ?"}}}
+
+	isUsernameTaken, err := u.userRepo.GetOne(ctx, queryUsername)
 	if err != nil {
 		fmt.Printf("fetch username failed, error: '%s'", err.Error())
 		return
@@ -54,7 +57,8 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 		err = errors.New("username already taken")
 		return
 	}
-	isEmailTaken, err := u.userRepo.GetOne(ctx, argsEmail)
+	queryEmail := domain.UserQueryArgs{WhereClause: domain.WhereClause{User: domain.Query{Args: m.Email, Clause: "email = ?"}}}
+	isEmailTaken, err := u.userRepo.GetOne(ctx, queryEmail)
 	if err != nil {
 		fmt.Printf("fetch user email failed, error: '%s'", err.Error())
 		return

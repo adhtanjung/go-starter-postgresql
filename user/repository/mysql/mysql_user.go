@@ -77,9 +77,13 @@ func (m *mysqlUserRepository) GetOneByUsernameOrEmail(ctx context.Context, usern
 	return
 }
 
-func (m *mysqlUserRepository) GetOne(ctx context.Context, args map[string]interface{}) (res domain.User, err error) {
+func (m *mysqlUserRepository) GetOne(ctx context.Context, args domain.UserQueryArgs) (res domain.User, err error) {
 	var user domain.User
-	if result := m.Conn.Where(args).Find(&user); result.Error != nil {
+	if result := m.Conn.Preload("UserRoles", func(tx *gorm.DB) *gorm.DB {
+		return tx.Select(args.SelectClause.UserRoles)
+	}).Preload("UserRoles.Role", func(tx *gorm.DB) *gorm.DB {
+		return tx.Select(args.SelectClause.Role)
+	}).Where(args.WhereClause.User.Clause, args.WhereClause.User.Args).First(&user); result.Error != nil {
 		return domain.User{}, result.Error
 	}
 	res = user

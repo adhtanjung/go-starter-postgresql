@@ -16,7 +16,6 @@ import (
 	jwt "github.com/golang-jwt/jwt/v4"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/adhtanjung/go-boilerplate/domain"
 	middlewares "github.com/adhtanjung/go-boilerplate/pkg/middlewares"
@@ -122,7 +121,7 @@ func main() {
 	val.Add("loc", "Asia/Jakarta")
 	dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
 	dbConn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		// Logger: logger.Default.LogMode(logger.Info),
 	})
 
 	if err != nil {
@@ -171,7 +170,7 @@ func main() {
 	})
 	e.GET("/", func(c echo.Context) error {
 		return c.HTML(http.StatusOK, `
-			<h1>Welcome to Echo!</h1>
+			<h1>Welcome to Softworx API!</h1>
 		`)
 	})
 
@@ -203,7 +202,9 @@ func main() {
 	// 		return nil
 	// 	},
 	// }))
+
 	apiGroup := e.Group("/api")
+	v1 := apiGroup.Group("/v1")
 	apiGroup.Use(middleware.JWTWithConfig(config))
 	apiGroup.Use(middL.CORS)
 	apiGroup.Use(enforcer.Enforce)
@@ -223,8 +224,8 @@ func main() {
 
 	_authHttpDelivery.NewAuthHandler(e, auth)
 	// _articleHttpDelivery.NewArticleHandler(e, au)
-	_userHttpDelivery.NewUserHandler(apiGroup, us)
-	_roleHttpDelivery.NewRoleHandler(apiGroup, ru)
+	_userHttpDelivery.NewUserHandler(v1, us)
+	_roleHttpDelivery.NewRoleHandler(v1, ru)
 
 	// s := http.Server{
 	// 	Addr:      ":9090",
