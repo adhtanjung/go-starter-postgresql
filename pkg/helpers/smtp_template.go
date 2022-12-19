@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"fmt"
 	"html/template"
 
 	"bytes"
@@ -11,7 +10,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func SendEmail(emailTemplate []byte, token string, emails ...string) (err error) {
+func SendEmail(emailTemplate []byte, data interface{}, emails ...string) (err error) {
 	var buf bytes.Buffer
 
 	// Convert the byte slice to a string
@@ -20,12 +19,6 @@ func SendEmail(emailTemplate []byte, token string, emails ...string) (err error)
 	tmpl, err := template.New("email").Parse(htmlStr)
 	if err != nil {
 		return err
-	}
-	// Define the data that will be used to fill the template
-	data := struct {
-		ResetPasswordLink string
-	}{
-		ResetPasswordLink: fmt.Sprintf("https://example.com/reset-password?token=%s", token),
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return err

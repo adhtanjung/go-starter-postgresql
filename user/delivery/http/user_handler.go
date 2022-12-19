@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/adhtanjung/go-boilerplate/domain"
@@ -24,12 +25,14 @@ func NewUserHandler(e *echo.Group, us domain.UserUsecase) {
 	}
 
 	e.POST("/users", handler.Store)
+	e.POST("/users/resend-email-verification", handler.Store)
 	e.PUT("/users/:id", handler.Update)
 	e.GET("/users/:id", handler.GetByID)
 
 }
 
 func (u *UserHandler) Store(c echo.Context) (err error) {
+	log.Println(c.Get("user_id"))
 	var user domain.User
 	err = c.Bind(&user)
 	if err != nil {

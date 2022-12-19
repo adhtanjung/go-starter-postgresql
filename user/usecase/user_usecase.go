@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,6 +16,7 @@ import (
 	"github.com/adhtanjung/go-boilerplate/pkg/helpers"
 	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type userUsecase struct {
@@ -43,14 +45,19 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	var emptyUser domain.User
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-	// argsUsername := map[string]interface{}{"username": m.Username}
-	// argsEmail := map[string]interface{}{"email": m.Email}
 
-	queryUsername := domain.UserQueryArgs{WhereClause: domain.WhereClause{User: domain.Query{Args: m.Username, Clause: "username = ?"}}}
+	queryUsername := domain.UserQueryArgs{
+		WhereClause: domain.WhereClause{
+			User: domain.Query{
+				Args:   m.Username,
+				Clause: "username = ?",
+			},
+		},
+	}
 
 	isUsernameTaken, err := u.userRepo.GetOne(ctx, queryUsername)
 	if err != nil {
-		fmt.Printf("fetch username failed, error: '%s'", err.Error())
+		logrus.Error("fetch username failed, error: ", err.Error())
 		return
 	}
 	if !reflect.DeepEqual(isUsernameTaken, emptyUser) {
@@ -72,7 +79,7 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 		fmt.Printf("password hashing failed, error: '%s'", err.Error())
 	}
 
-	defaultRole, err := u.roleRepo.GetByName(ctx, "superadmin")
+	defaultRole, err := u.roleRepo.GetByName(ctx, "user")
 	if err != nil {
 		fmt.Printf("fetch default role failed, error: '%s'", err.Error())
 		return
@@ -83,6 +90,7 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	m.CreatedAt = &now
 	m.UpdatedAt = &now
 	m.Password = hashed
+	m.IsVerified = false
 
 	err = u.userRepo.Store(ctx, m)
 	ur.CreatedAt = &now
@@ -90,19 +98,59 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	ur.RoleID = defaultRole.ID
 	ur.UserID = m.ID
 	err = u.userRoleRepo.Store(ctx, ur)
+	if err != nil {
+		return
+	}
+
+	user, err := u.userRepo.GetOneByUsernameOrEmail(ctx, m.Email)
+	if err != nil {
+		fmt.Printf("fetching user failed: '%s'", err.Error())
+	}
+	token, err := helpers.GenerateToken(m.ID, user.UserRoles, helpers.ShouldClaims{
+		ExpiresAt: 24,
+		Secret:    "",
+	})
+	if err != nil {
+		return
+	}
+	template, err := ioutil.ReadFile("./web/email_verif.html")
+	if err != nil {
+		return
+	}
+	data := struct {
+		Token string
+	}{
+		Token: token,
+	}
+	err = helpers.SendEmail(template, data, m.Email)
 	return
+
 }
 
 func (u *userUsecase) GetOneByUsernameOrEmail(c context.Context, usernameOrEmail string) (res domain.User, err error) {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	res, err = u.userRepo.GetOneByUsernameOrEmail(ctx, usernameOrEmail)
-	// userRole, err := u.userRoleRepo.GetByUserID(ctx, res.ID)
-	// res.UserRoles = userRole
 	if err != nil {
 		return
 	}
 	return
+}
+
+func (u *userUsecase) ResendEmailVerification(c context.Context, token string) (err error) {
+
+	// template, err := ioutil.ReadFile("./web/email_verif.html")
+	// if err != nil {
+	// 	return
+	// }
+	// data := struct {
+	// 	Token string
+	// }{
+	// 	Token: token,
+	// }
+	// err = helpers.SendEmail(template, data, m.Email)
+	return
+
 }
 
 func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
@@ -119,10 +167,10 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 	if user.Email != "" {
 		res.Email = user.Email
 	}
-	// if user.Password != "" {
-	// 	hashed, _ := helper.HashPassword(user.Password)
-	// 	res.Password = hashed
-	// }
+	if user.Password != "" {
+		hashed, _ := helper.HashPassword(user.Password)
+		res.Password = hashed
+	}
 	if user.Name != "" {
 		res.Name = user.Name
 	}
@@ -162,7 +210,7 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 
 			userFilepath := &domain.UserFilepath{Filename: originalName, Mimetype: extension, Path: pathToDb, UserID: res.ID, Base: domain.Base{CreatedAt: &now, UpdatedAt: &now}}
 
-			user.ProfilePic = fileLocation
+			res.ProfilePic = pathToDb
 			err = u.userFilepathRepo.Store(ctx, userFilepath)
 			if err != nil {
 				return err
@@ -175,9 +223,14 @@ func (u *userUsecase) Update(c context.Context, user *domain.User) (err error) {
 
 	user = &res
 	return u.userRepo.Update(ctx, user)
-	// return nil
 
 }
+
+func (u *userUsecase) SendEmailVefification(c context.Context, userID uuid.UUID) (err error) {
+
+	return
+}
+
 func (u *userUsecase) GetByID(c context.Context, id uuid.UUID) (res domain.User, err error) {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()

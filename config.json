@@ -14,7 +14,8 @@
 		"name": "boilerplate"
 	},
 	"secret": {
-		"jwt": "jwt_secret_key_boilerplate"
+		"jwt": "jwt_secret_key_boilerplate",
+		"refresh_jwt": "refresh_jwt_secret_key_boilerplate_"
 	},
 	"smtp": {
 		"host": "smtp.gmail.com",
@@ -22,5 +23,9 @@
 		"sender_name": "PT. Anju Jaya <adhtanjung@gmail.com>",
 		"email": "adhtanjung@gmail.com",
 		"password": "xsishohfkticbxjj"
+	},
+	"google": {
+		"client_id": "874918646193-8phn3ueh8q8aqrg5ahckqvs4cft4dsl5.apps.googleusercontent.com",
+		"client_secret": "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"
 	}
 }

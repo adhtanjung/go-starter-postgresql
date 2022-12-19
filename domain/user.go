@@ -14,8 +14,9 @@ type User struct {
 	Password   string                `json:"password,omitempty" validate:"required" form:"password"`
 	Name       string                `json:"name,omitempty" form:"name"`
 	UserRoles  []UserRole            `gorm:"foreignKey:UserID;" json:"user_role,omitempty" form:"user_roles"`
-	ProfilePic string                `json:"profil_pic,omitempty"`
+	ProfilePic string                `json:"profile_pic,omitempty"`
 	File       *multipart.FileHeader `gorm:"-" json:"file,omitempty"`
+	IsVerified bool                  `json:"is_verified,omitempty" form:"is_verified"`
 }
 
 type UserUpdate struct {
@@ -53,7 +54,8 @@ type ForgotPassword struct {
 }
 
 type AuthUsecase interface {
-	Login(ctx context.Context, auth Auth) (string, error)
+	Login(ctx context.Context, auth Auth) (string, string, error)
+	Register(context.Context, *User, *UserRole) error
 	ForgotPassword(ctx context.Context, email string) error
 }
 type UserUsecase interface {
@@ -61,6 +63,7 @@ type UserUsecase interface {
 	GetByID(ctx context.Context, id uuid.UUID) (User, error)
 	Store(context.Context, *User, *UserRole) error
 	Update(ctx context.Context, a *User) error
+	ResendEmailVerification(ctx context.Context, token string) error
 }
 
 type UserRepository interface {

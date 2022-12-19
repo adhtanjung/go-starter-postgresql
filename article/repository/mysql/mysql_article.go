@@ -153,7 +153,7 @@ func (m *mysqlArticleRepository) Delete(ctx context.Context, id int64) (err erro
 	}
 
 	if rowsAfected != 1 {
-		err = fmt.Errorf("Weird  Behavior. Total Affected: %d", rowsAfected)
+		err = fmt.Errorf("weird  behavior. total affected: %d", rowsAfected)
 		return
 	}
 
@@ -176,7 +176,7 @@ func (m *mysqlArticleRepository) Update(ctx context.Context, ar *domain.Article)
 		return
 	}
 	if affect != 1 {
-		err = fmt.Errorf("Weird  Behavior. Total Affected: %d", affect)
+		err = fmt.Errorf("weird  behavior. total affected: %d", affect)
 		return
 	}
 
