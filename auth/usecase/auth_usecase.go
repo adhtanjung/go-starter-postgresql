@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -41,25 +42,27 @@ func NewAuthUsecase(u domain.UserRepository, ur domain.UserRoleRepository, r dom
 		contextTimeout: timeout,
 	}
 }
-func (a *authUsecase) Login(c context.Context, auth domain.Auth) (string, string, error) {
+func (a *authUsecase) Login(c context.Context, auth domain.Auth, isOauth bool) (token string, refreshToken string, err error) {
 	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
 	defer cancel()
 	user, err := a.userRepo.GetOneByUsernameOrEmail(ctx, auth.UsernameOrEmail)
 	if err != nil {
 		fmt.Printf("fetching user failed: '%s'", err.Error())
 	}
-
-	if match := helper.CheckPasswordHash(auth.Password, user.Password); !match {
-		return "", "", &AuthError{"incorrect username or password"}
+	if !isOauth {
+		if match := helper.CheckPasswordHash(auth.Password, user.Password); !match {
+			return "", "", &AuthError{"incorrect username or password"}
+		}
 	}
-	token, err := helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
+
+	token, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 24,
 		Secret:    "",
 	})
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken, err := helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
+	refreshToken, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 72,
 		Secret:    viper.GetString("secret.refresh_jwt"),
 	})
@@ -69,31 +72,18 @@ func (a *authUsecase) Login(c context.Context, auth domain.Auth) (string, string
 	return token, refreshToken, nil
 }
 
-func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.UserRole) (err error) {
+func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.UserRole, isOauth bool) (refreshToken string, token string, err error) {
 
 	var emptyUser domain.User
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-
-	queryUsername := domain.UserQueryArgs{
+	queryEmail := domain.UserQueryArgs{
 		WhereClause: domain.WhereClause{
 			User: domain.Query{
-				Args:   m.Username,
-				Clause: "username = ?",
+				Args: m.Email, Clause: "email = ?",
 			},
 		},
 	}
-
-	isUsernameTaken, err := u.userRepo.GetOne(ctx, queryUsername)
-	if err != nil {
-		logrus.Error("fetch username failed, error: ", err.Error())
-		return
-	}
-	if !reflect.DeepEqual(isUsernameTaken, emptyUser) {
-		err = errors.New("username already taken")
-		return
-	}
-	queryEmail := domain.UserQueryArgs{WhereClause: domain.WhereClause{User: domain.Query{Args: m.Email, Clause: "email = ?"}}}
 	isEmailTaken, err := u.userRepo.GetOne(ctx, queryEmail)
 	if err != nil {
 		fmt.Printf("fetch user email failed, error: '%s'", err.Error())
@@ -103,9 +93,31 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 		err = errors.New("email already taken")
 		return
 	}
-	hashed, err := helper.HashPassword(m.Password)
-	if err != nil {
-		fmt.Printf("password hashing failed, error: '%s'", err.Error())
+
+	if !isOauth {
+		queryUsername := domain.UserQueryArgs{
+			WhereClause: domain.WhereClause{
+				User: domain.Query{
+					Args:   m.Username,
+					Clause: "username = ?",
+				},
+			},
+		}
+
+		isUsernameTaken, err := u.userRepo.GetOne(ctx, queryUsername)
+		if err != nil {
+			logrus.Error("fetch username failed, error: ", err.Error())
+			return "", "", err
+		}
+		if !reflect.DeepEqual(isUsernameTaken, emptyUser) {
+			err = errors.New("username already taken")
+			return "", "", err
+		}
+		hashed, err := helper.HashPassword(m.Password)
+		if err != nil {
+			fmt.Printf("password hashing failed, error: '%s'", err.Error())
+		}
+		m.Password = hashed
 	}
 
 	defaultRole, err := u.roleRepo.GetByName(ctx, "user")
@@ -118,8 +130,6 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	// m.Role = defaultRole
 	m.CreatedAt = &now
 	m.UpdatedAt = &now
-	m.Password = hashed
-	m.IsVerified = false
 
 	err = u.userRepo.Store(ctx, m)
 	ur.CreatedAt = &now
@@ -130,28 +140,58 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	if err != nil {
 		return
 	}
-
-	user, err := u.userRepo.GetOneByUsernameOrEmail(ctx, m.Email)
-	if err != nil {
-		fmt.Printf("fetching user failed: '%s'", err.Error())
+	findByEmail := domain.UserQueryArgs{
+		WhereClause: domain.WhereClause{
+			User: domain.Query{
+				Args: m.Email, Clause: "email = ?",
+			},
+		},
 	}
-	token, err := helpers.GenerateToken(m.ID, user.UserRoles, helpers.ShouldClaims{
+	user, err := u.userRepo.GetOne(ctx, findByEmail)
+	if err != nil {
+		return "", "", err
+	}
+	if !isOauth {
+		tokenTemplate, err := helpers.GenerateToken(m.ID, user.UserRoles, helpers.ShouldClaims{
+			ExpiresAt: 24,
+			Secret:    "",
+		})
+		if err != nil {
+			return "", "", err
+		}
+		dir, err := os.Getwd()
+		if err != nil {
+			return "", "", err
+		}
+		template, err := os.ReadFile(filepath.Join(dir, "/web/email_verif.html"))
+		if err != nil {
+			return "", "", err
+		}
+		data := struct {
+			Token string
+		}{
+			Token: tokenTemplate,
+		}
+		err = helpers.SendEmail(template, data, m.Email)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	token, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 24,
 		Secret:    "",
 	})
 	if err != nil {
-		return
+		return "", "", err
 	}
-	template, err := ioutil.ReadFile("./web/email_verif.html")
+	refreshToken, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
+		ExpiresAt: 72,
+		Secret:    viper.GetString("secret.refresh_jwt"),
+	})
 	if err != nil {
-		return
+		return "", "", err
 	}
-	data := struct {
-		Token string
-	}{
-		Token: token,
-	}
-	err = helpers.SendEmail(template, data, m.Email)
+
 	return
 
 }
@@ -181,9 +221,13 @@ func (a *authUsecase) ForgotPassword(c context.Context, email string) (err error
 	if err != nil {
 		return
 	}
-	b, err := ioutil.ReadFile("./web/reset_pass.html")
+	dir, err := os.Getwd()
 	if err != nil {
-		panic(err)
+		return
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "/web/reset_pass.html"))
+	if err != nil {
+		return
 	}
 	// Define the data that will be used to fill the template
 	data := struct {

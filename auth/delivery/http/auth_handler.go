@@ -3,9 +3,9 @@ package http
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/adhtanjung/go-boilerplate/domain"
-	"github.com/adhtanjung/go-boilerplate/pkg/helpers"
 	"github.com/labstack/echo/v4"
 	"github.com/markbates/goth/gothic"
 	"github.com/sirupsen/logrus"
@@ -62,32 +62,34 @@ func (a *AuthHandler) GoogleOauth(c echo.Context) (err error) {
 }
 func (a *AuthHandler) GoogleOauthCallback(c echo.Context) (err error) {
 	user, err := gothic.CompleteUserAuth(c.Response(), c.Request())
+	now := time.Now()
 
 	if err != nil {
-		// fmt.Fprintln(c.Response(), err)
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	// htmlPath := filepath.Join(DIR, "/web/oauth_success.html")
-
-	// t, _ := template.ParseFiles(htmlPath)
-	// t.Execute(c.Response(), user)
-	hashed, err := helpers.HashPassword(user.UserID)
-	if err != nil {
-		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
-	}
-
+	ctx := c.Request().Context()
 	var userDetail domain.User
 	userDetail.Email = user.Email
 	userDetail.Name = user.Name
-	userDetail.Username = user.FirstName + "googlegenerated"
-	userDetail.Password = hashed
-	err = a.AUsecase.Register(c.Request().Context(), &userDetail, &domain.UserRole{})
-	if err == nil {
-		// TODO: login if user already registered
-		// a.AUsecase.Login()
-		return c.Render(http.StatusOK, "oauth_success.html", user)
+	userDetail.OauthProvider = "google"
+	userDetail.OauthToken = user.AccessToken
+	userDetail.VerifiedAt = &now
+
+	refreshTokenRegist, tokenRegist, err := a.AUsecase.Register(ctx, &userDetail, &domain.UserRole{}, true)
+	if err != nil {
+
+		if err.Error() == "username already taken" || err.Error() == "email already taken" {
+			token, refreshToken, err := a.AUsecase.Login(ctx, domain.Auth{UsernameOrEmail: user.Email}, true)
+			if err != nil {
+				return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+			}
+			return c.JSON(http.StatusOK, echo.Map{"token": token, "refresh_token": refreshToken})
+			// return c.Render(http.StatusOK, "oauth_success.html", user)
+		}
+	} else {
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+	return c.JSON(http.StatusOK, echo.Map{"token": tokenRegist, "refresh_token": refreshTokenRegist})
 
 }
 func (a *AuthHandler) ForgotPassword(c echo.Context) (err error) {
@@ -119,7 +121,7 @@ func (a *AuthHandler) Login(c echo.Context) (err error) {
 	}
 
 	ctx := c.Request().Context()
-	token, refreshToken, errLogin := a.AUsecase.Login(ctx, auth)
+	token, refreshToken, errLogin := a.AUsecase.Login(ctx, auth, false)
 
 	if errLogin != nil {
 		return c.JSON(getStatusCode(errLogin), ResponseError{Message: errLogin.Error()})
@@ -141,12 +143,12 @@ func (u *AuthHandler) Register(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 	ctx := c.Request().Context()
-	err = u.AUsecase.Register(ctx, &user, &domain.UserRole{})
+	refreshToken, token, err := u.AUsecase.Register(ctx, &user, &domain.UserRole{}, false)
 	if err != nil {
-
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusCreated, user)
+	return c.JSON(http.StatusCreated, echo.Map{"token": token, "refresh_token": refreshToken})
+	// return c.JSON(http.StatusCreated, user)
 
 }
 func isRequestValidUser(m *domain.User) (bool, error) {

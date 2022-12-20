@@ -90,7 +90,6 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	m.CreatedAt = &now
 	m.UpdatedAt = &now
 	m.Password = hashed
-	m.IsVerified = false
 
 	err = u.userRepo.Store(ctx, m)
 	ur.CreatedAt = &now

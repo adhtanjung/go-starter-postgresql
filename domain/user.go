@@ -3,20 +3,23 @@ package domain
 import (
 	"context"
 	"mime/multipart"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type User struct {
 	Base
-	Username   string                `json:"username,omitempty" validate:"required" form:"username" gorm:"index"`
-	Email      string                `json:"email,omitempty" validate:"required" form:"email" gorm:"index"`
-	Password   string                `json:"password,omitempty" validate:"required" form:"password"`
-	Name       string                `json:"name,omitempty" form:"name"`
-	UserRoles  []UserRole            `gorm:"foreignKey:UserID;" json:"user_role,omitempty" form:"user_roles"`
-	ProfilePic string                `json:"profile_pic,omitempty"`
-	File       *multipart.FileHeader `gorm:"-" json:"file,omitempty"`
-	IsVerified bool                  `json:"is_verified,omitempty" form:"is_verified"`
+	Username      string                `json:"username,omitempty" form:"username" gorm:"size:191"`
+	Email         string                `json:"email,omitempty" validate:"required" form:"email" gorm:"index"`
+	Password      string                `json:"password,omitempty" form:"password"`
+	Name          string                `json:"name,omitempty" form:"name"`
+	UserRoles     []UserRole            `gorm:"foreignKey:UserID;" json:"user_role,omitempty" form:"user_roles"`
+	ProfilePic    string                `json:"profile_pic,omitempty"`
+	File          *multipart.FileHeader `gorm:"-" json:"file,omitempty"`
+	VerifiedAt    *time.Time            `json:"verified_at,omitempty" form:"verified_at"`
+	OauthProvider string                `json:"oauth_provider,omitempty"`
+	OauthToken    string                `json:"oauth_token,omitempty"`
 }
 
 type UserUpdate struct {
@@ -54,8 +57,8 @@ type ForgotPassword struct {
 }
 
 type AuthUsecase interface {
-	Login(ctx context.Context, auth Auth) (string, string, error)
-	Register(context.Context, *User, *UserRole) error
+	Login(ctx context.Context, auth Auth, isOauth bool) (string, string, error)
+	Register(context.Context, *User, *UserRole, bool) (string, string, error)
 	ForgotPassword(ctx context.Context, email string) error
 }
 type UserUsecase interface {
