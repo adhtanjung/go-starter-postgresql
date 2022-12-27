@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"io"
 	"path/filepath"
+	"runtime"
+	_ "runtime/pprof"
 
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
@@ -43,6 +45,7 @@ import (
 	_authHttpDelivery "github.com/adhtanjung/go-boilerplate/auth/delivery/http"
 	_authUcase "github.com/adhtanjung/go-boilerplate/auth/usecase"
 
+	// _refreshTokenHttpDelivery "github.com/adhtanjung/go-boilerplate/auth/delivery/http"
 	_casbinRepo "github.com/adhtanjung/go-boilerplate/casbin/repository/mysql"
 	_roleHttpDelivery "github.com/adhtanjung/go-boilerplate/role/delivery/http"
 	_roleRepo "github.com/adhtanjung/go-boilerplate/role/repository/mysql"
@@ -124,6 +127,7 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 			role := rMap["role"].(map[string]interface{})
 
 			roles = append(roles, role["name"].(string))
+			log.Println(role["name"])
 		}
 
 		for _, role := range roles {
@@ -202,6 +206,8 @@ func (t *Renderer) Render(
 }
 
 func main() {
+	runtime.GOMAXPROCS(4)
+
 	// key := "Secret-session-key" // Replace with your SESSION_SECRET or similar
 	// maxAge := 86400 * 30        // 30 days
 	// isProd := false             // Set to true when serving over https
@@ -213,8 +219,11 @@ func main() {
 	// store.Options.Secure = isProd
 
 	// gothic.Store = store
+	gugel := google.New(viper.GetString("google.client_id"), viper.GetString("google.client_secret"), "http://localhost:9090/auth/callback?provider=google")
+	gugel.SetPrompt("consent")
+
 	goth.UseProviders(
-		google.New(viper.GetString("google.client_id"), viper.GetString("google.client_secret"), "http://127.0.0.1:9090/auth/callback?provider=google"),
+		gugel,
 	)
 	dbHost := viper.GetString(`database.host`)
 	dbPort := viper.GetString(`database.port`)
@@ -247,6 +256,7 @@ func main() {
 	en.LoadPolicy()
 
 	signingKey := []byte(viper.GetString(`secret.jwt`))
+	signingKeyRefreshToken := []byte(viper.GetString(`secret.refresh_jwt`))
 
 	config := middleware.JWTConfig{
 		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
@@ -255,6 +265,26 @@ func main() {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
 				}
 				return signingKey, nil
+			}
+
+			// claims are of type `jwt.MapClaims` when token is created with `jwt.Parse`
+			token, err := jwt.Parse(auth, keyFunc)
+			if err != nil {
+				return nil, err
+			}
+			if !token.Valid {
+				return nil, errors.New("invalid token")
+			}
+			return token, nil
+		},
+	}
+	configRefreshToken := middleware.JWTConfig{
+		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
+			keyFunc := func(t *jwt.Token) (interface{}, error) {
+				if t.Method.Alg() != "HS256" {
+					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
+				}
+				return signingKeyRefreshToken, nil
 			}
 
 			// claims are of type `jwt.MapClaims` when token is created with `jwt.Parse`
@@ -282,6 +312,10 @@ func main() {
 		return c.String(http.StatusOK, "healthy")
 	})
 	e.GET("/", func(c echo.Context) error {
+		c.SetCookie(&http.Cookie{
+			Name:  "test_cookie",
+			Value: "woy",
+		})
 		return c.HTML(http.StatusOK, `
 			<h1>Welcome to Softworx API!</h1>
 		`)
@@ -291,6 +325,11 @@ func main() {
 	middL := _articleHttpDeliveryMiddleware.InitMiddleware()
 	// e.Use(middleware.Logger())
 	e.GET("/ws", hello)
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"*"},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+		AllowCredentials: true,
+	}))
 	e.Use(middleware.Recover())
 	e.Use(middlewares.MiddlewareLogging)
 	e.Use(apmechov4.Middleware())
@@ -358,13 +397,17 @@ func main() {
 	// 		return nil
 	// 	},
 	// }))
+	refreshToken := e.Group("/refresh-token")
+	refreshToken.Use(middleware.JWTWithConfig(configRefreshToken))
+	refreshToken.Use(middL.CORS)
+	refreshToken.Use(middlewares.TokenToContext(viper.GetString("secret.refresh_jwt")))
 
 	apiGroup := e.Group("/api")
 	v1 := apiGroup.Group("/v1")
 	v1.Use(middleware.JWTWithConfig(config))
 	v1.Use(middL.CORS)
 	v1.Use(enforcer.Enforce)
-	v1.Use(middlewares.TokenToContext)
+	v1.Use(middlewares.TokenToContext(viper.GetString("secret.jwt")))
 	// authorRepo := _authorRepo.NewMysqlAuthorRepository(dbConn)
 	// ar := _articleRepo.NewMysqlArticleRepository(dbConn)
 	userRepo := _userRepo.NewMysqlUserRepository(dbConn, en)
@@ -379,16 +422,12 @@ func main() {
 	auth := _authUcase.NewAuthUsecase(userRepo, userRoleRepo, roleRepo, timeoutContext)
 	// au := _articleUcase.NewArticleUsecase(ar, authorRepo, timeoutContext)
 
+	_authHttpDelivery.NewRefreshTokenHandler(refreshToken, us)
 	_authHttpDelivery.NewAuthHandler(e, auth)
 	// _articleHttpDelivery.NewArticleHandler(e, au)
 	_userHttpDelivery.NewUserHandler(v1, us)
 	_roleHttpDelivery.NewRoleHandler(v1, ru)
 
-	// s := http.Server{
-	// 	Addr:      ":9090",
-	// 	Handler:   e, // set Echo as handler
-	// 	TLSConfig: tlsConfig,
-	// }
 	e.HTTPErrorHandler = middlewares.ErrorHandler
 	lock := make(chan error)
 	time.Sleep(1 * time.Millisecond)

@@ -28,6 +28,23 @@ func NewUserHandler(e *echo.Group, us domain.UserUsecase) {
 	e.POST("/users/resend-email-verification", handler.Store)
 	e.PUT("/users/:id", handler.Update)
 	e.GET("/users/:id", handler.GetByID)
+	// e.GET("/refresh-token", handler.RefreshToken)
+
+}
+
+func (u *UserHandler) RefreshToken(c echo.Context) (err error) {
+	userID := c.Get("user_id")
+	ctx := c.Request().Context()
+	toUUIDType, err := uuid.Parse(userID.(string))
+	if err != nil {
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+	}
+	refreshToken, accessToken, err := u.UUsecase.GetUsingRefreshToken(ctx, toUUIDType)
+	if err != nil {
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"token": accessToken, "refresh_token": refreshToken})
 
 }
 

@@ -63,7 +63,7 @@ func (a *authUsecase) Login(c context.Context, auth domain.Auth, isOauth bool) (
 		return "", "", err
 	}
 	refreshToken, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
-		ExpiresAt: 72,
+		ExpiresAt: 24 * 7,
 		Secret:    viper.GetString("secret.refresh_jwt"),
 	})
 	if err != nil {
@@ -116,6 +116,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 		hashed, err := helper.HashPassword(m.Password)
 		if err != nil {
 			fmt.Printf("password hashing failed, error: '%s'", err.Error())
+			return "", "", err
 		}
 		m.Password = hashed
 	}
@@ -123,7 +124,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	defaultRole, err := u.roleRepo.GetByName(ctx, "user")
 	if err != nil {
 		fmt.Printf("fetch default role failed, error: '%s'", err.Error())
-		return
+		return "", "", err
 	}
 
 	now := time.Now()
@@ -138,7 +139,8 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	ur.UserID = m.ID
 	err = u.userRoleRepo.Store(ctx, ur)
 	if err != nil {
-		return
+		err = fmt.Errorf(fmt.Sprintf("error user role: %s", err))
+		return "", "", err
 	}
 	findByEmail := domain.UserQueryArgs{
 		WhereClause: domain.WhereClause{
@@ -149,7 +151,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	}
 	user, err := u.userRepo.GetOne(ctx, findByEmail)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf(fmt.Sprintf("error get user: %s", err))
 	}
 	if !isOauth {
 		tokenTemplate, err := helpers.GenerateToken(m.ID, user.UserRoles, helpers.ShouldClaims{
@@ -157,39 +159,47 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 			Secret:    "",
 		})
 		if err != nil {
-			return "", "", err
+			return "", "", fmt.Errorf(fmt.Sprintf("error template: %s", err))
 		}
 		dir, err := os.Getwd()
 		if err != nil {
-			return "", "", err
+			return "", "", fmt.Errorf("error get wd")
 		}
 		template, err := os.ReadFile(filepath.Join(dir, "/web/email_verif.html"))
 		if err != nil {
-			return "", "", err
+			return "", "", fmt.Errorf("error read file")
 		}
 		data := struct {
 			Token string
 		}{
 			Token: tokenTemplate,
 		}
-		err = helpers.SendEmail(template, data, m.Email)
+		emailChan := make(chan *helpers.Email)
+
+		err = helpers.SendEmail(emailChan)
+		emailChan <- &helpers.Email{Recipient: []string{m.Email}, Template: template, Body: data}
 		if err != nil {
+			err = fmt.Errorf(fmt.Sprintf("error sending email: %s", err))
 			return "", "", err
 		}
+		// err = helpers.SendEmail(template, data, m.Email)
+		// if err != nil {
+		// 	return "", "", err
+		// }
 	}
 	token, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 24,
 		Secret:    "",
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", errors.New("error buat token")
 	}
 	refreshToken, err = helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 72,
 		Secret:    viper.GetString("secret.refresh_jwt"),
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", errors.New("error buat refresh token")
 	}
 
 	return
@@ -198,6 +208,12 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 
 func (a *authUsecase) ForgotPassword(c context.Context, email string) (err error) {
 
+	emailChan := make(chan *helpers.Email)
+
+	err = helpers.SendEmail(emailChan)
+	if err != nil {
+		return
+	}
 	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
 	defer cancel()
 
@@ -235,7 +251,9 @@ func (a *authUsecase) ForgotPassword(c context.Context, email string) (err error
 	}{
 		ResetPasswordLink: fmt.Sprintf("https://example.com/reset-password?token=%s", token),
 	}
-	err = helpers.SendEmail(b, data, user.Email)
+	emailChan <- &helpers.Email{Recipient: []string{user.Email}, Template: b, Body: data}
+	// time.Sleep(3 * time.Second)
+	// err = helpers.SendEmail(b, data, user.Email)
 
 	return
 }

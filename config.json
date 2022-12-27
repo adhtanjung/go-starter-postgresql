@@ -11,7 +11,7 @@
 		"port": "3306",
 		"user": "root",
 		"pass": "password",
-		"name": "boilerplate"
+		"name": "adminhub"
 	},
 	"secret": {
 		"jwt": "jwt_secret_key_boilerplate",

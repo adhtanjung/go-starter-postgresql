@@ -67,6 +67,7 @@ type UserUsecase interface {
 	Store(context.Context, *User, *UserRole) error
 	Update(ctx context.Context, a *User) error
 	ResendEmailVerification(ctx context.Context, token string) error
+	GetUsingRefreshToken(ctx context.Context, userID uuid.UUID) (refreshToken string, accessToken string, err error)
 }
 
 type UserRepository interface {

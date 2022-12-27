@@ -17,6 +17,7 @@ import (
 	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 type userUsecase struct {
@@ -42,6 +43,12 @@ func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, ur domain.
 
 func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRole) (err error) {
 
+	emailChan := make(chan *helpers.Email)
+
+	err = helpers.SendEmail(emailChan)
+	if err != nil {
+		return
+	}
 	var emptyUser domain.User
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
@@ -121,7 +128,8 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	}{
 		Token: token,
 	}
-	err = helpers.SendEmail(template, data, m.Email)
+	// err = helpers.SendEmail(template, data, m.Email)
+	emailChan <- &helpers.Email{Recipient: []string{m.Email}, Template: template, Body: data}
 	return
 
 }
@@ -130,6 +138,37 @@ func (u *userUsecase) GetOneByUsernameOrEmail(c context.Context, usernameOrEmail
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	res, err = u.userRepo.GetOneByUsernameOrEmail(ctx, usernameOrEmail)
+	if err != nil {
+		return
+	}
+	return
+}
+func (u *userUsecase) GetUsingRefreshToken(c context.Context, userID uuid.UUID) (refreshToken string, accessToken string, err error) {
+	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+	defer cancel()
+	query := domain.UserQueryArgs{
+		WhereClause: domain.WhereClause{
+			User: domain.Query{
+				Args:   userID.String(),
+				Clause: "id = ?",
+			},
+		},
+	}
+	res, err := u.userRepo.GetOne(ctx, query)
+	if err != nil {
+		return
+	}
+	accessToken, err = helpers.GenerateToken(res.ID, res.UserRoles, helpers.ShouldClaims{
+		ExpiresAt: 24,
+		Secret:    "",
+	})
+	if err != nil {
+		return
+	}
+	refreshToken, err = helpers.GenerateToken(res.ID, res.UserRoles, helpers.ShouldClaims{
+		ExpiresAt: 24 * 7,
+		Secret:    viper.GetString("secret.refresh_jwt"),
+	})
 	if err != nil {
 		return
 	}
