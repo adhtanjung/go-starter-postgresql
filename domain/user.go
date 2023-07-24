@@ -29,23 +29,9 @@ type UserUpdate struct {
 	Password string `json:"password,omitempty"`
 	Name     string `json:"name,omitempty"`
 }
-type Query struct {
-	Args   string
-	Clause string
-}
 type UserQueryArgs struct {
 	SelectClause
 	WhereClause
-}
-type SelectClause struct {
-	User      string
-	UserRoles string
-	Role      string
-}
-type WhereClause struct {
-	UserRoles Query
-	Role      Query
-	User      Query
 }
 
 type Auth struct {
@@ -72,7 +58,7 @@ type UserUsecase interface {
 
 type UserRepository interface {
 	GetOneByUsernameOrEmail(ctx context.Context, usernameOrEmail string) (User, error)
-	GetOne(ctx context.Context, args UserQueryArgs) (User, error)
+	GetOne(ctx context.Context, args QueryArgs) (User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (User, error)
 	Store(ctx context.Context, a *User) error
 	Update(ctx context.Context, a *User) error
@@ -91,12 +77,3 @@ type UserFilepathRepository interface {
 	Store(ctx context.Context, f *UserFilepath) error
 	// GetByUserID(ctx context.Context, userID string) ([]UserFilepath, error)
 }
-
-// func (u *User) BeforeSave(tx *gorm.DB) error {
-// 	hashedPassword, err := helper.HashPassword(u.Password)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	u.Password = string(hashedPassword)
-// 	return nil
-// }

@@ -53,7 +53,7 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
-	queryUsername := domain.UserQueryArgs{
+	queryUsername := domain.QueryArgs{
 		WhereClause: domain.WhereClause{
 			User: domain.Query{
 				Args:   m.Username,
@@ -71,7 +71,12 @@ func (u *userUsecase) Store(c context.Context, m *domain.User, ur *domain.UserRo
 		err = errors.New("username already taken")
 		return
 	}
-	queryEmail := domain.UserQueryArgs{WhereClause: domain.WhereClause{User: domain.Query{Args: m.Email, Clause: "email = ?"}}}
+	queryEmail := domain.QueryArgs{WhereClause: domain.WhereClause{
+		User: domain.Query{
+			Args:   m.Email,
+			Clause: "email = ?"},
+	},
+	}
 	isEmailTaken, err := u.userRepo.GetOne(ctx, queryEmail)
 	if err != nil {
 		fmt.Printf("fetch user email failed, error: '%s'", err.Error())
@@ -146,7 +151,7 @@ func (u *userUsecase) GetOneByUsernameOrEmail(c context.Context, usernameOrEmail
 func (u *userUsecase) GetUsingRefreshToken(c context.Context, userID uuid.UUID) (refreshToken string, accessToken string, err error) {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-	query := domain.UserQueryArgs{
+	query := domain.QueryArgs{
 		WhereClause: domain.WhereClause{
 			User: domain.Query{
 				Args:   userID.String(),

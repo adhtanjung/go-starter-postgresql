@@ -73,7 +73,7 @@ func (m *mysqlUserRepository) GetOneByUsernameOrEmail(ctx context.Context, usern
 	return
 }
 
-func (m *mysqlUserRepository) GetOne(ctx context.Context, args domain.UserQueryArgs) (res domain.User, err error) {
+func (m *mysqlUserRepository) GetOne(ctx context.Context, args domain.QueryArgs) (res domain.User, err error) {
 	var user domain.User
 	if result := m.Conn.Preload("UserRoles", func(tx *gorm.DB) *gorm.DB {
 		return tx.Select(helpers.Ternary(args.SelectClause.UserRoles, "id, user_id, role_id"))

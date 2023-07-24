@@ -77,7 +77,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	var emptyUser domain.User
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-	queryEmail := domain.UserQueryArgs{
+	queryEmail := domain.QueryArgs{
 		WhereClause: domain.WhereClause{
 			User: domain.Query{
 				Args: m.Email, Clause: "email = ?",
@@ -95,7 +95,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	}
 
 	if !isOauth {
-		queryUsername := domain.UserQueryArgs{
+		queryUsername := domain.QueryArgs{
 			WhereClause: domain.WhereClause{
 				User: domain.Query{
 					Args:   m.Username,
@@ -142,7 +142,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 		err = fmt.Errorf(fmt.Sprintf("error user role: %s", err))
 		return "", "", err
 	}
-	findByEmail := domain.UserQueryArgs{
+	findByEmail := domain.QueryArgs{
 		WhereClause: domain.WhereClause{
 			User: domain.Query{
 				Args: m.Email, Clause: "email = ?",
@@ -217,7 +217,7 @@ func (a *authUsecase) ForgotPassword(c context.Context, email string) (err error
 	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
 	defer cancel()
 
-	query := domain.UserQueryArgs{
+	query := domain.QueryArgs{
 		SelectClause: domain.SelectClause{
 			User:      "id, username, email",
 			UserRoles: "id, user_id, role_id",
