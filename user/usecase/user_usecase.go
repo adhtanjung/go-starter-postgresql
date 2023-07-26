@@ -12,29 +12,47 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
-	"github.com/adhtanjung/go-boilerplate/pkg/helpers"
-	"github.com/adhtanjung/go-boilerplate/user/usecase/helper"
+	"github.com/adhtanjung/go-starter/domain"
+	"github.com/adhtanjung/go-starter/pkg/helpers"
+	"github.com/adhtanjung/go-starter/user/usecase/helper"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
+// type userUsecase struct {
+// 	userRepo         domain.UserRepository
+// 	roleRepo         domain.RoleRepository
+// 	userRoleRepo     domain.UserRoleRepository
+// 	casbinRepo       domain.CasbinRBACRepository
+// 	userFilepathRepo domain.UserFilepathRepository
+// 	contextTimeout   time.Duration
+// }
+
 type userUsecase struct {
 	userRepo         domain.UserRepository
 	roleRepo         domain.RoleRepository
 	userRoleRepo     domain.UserRoleRepository
-	casbinRepo       domain.CasbinRBACRepository
 	userFilepathRepo domain.UserFilepathRepository
 	contextTimeout   time.Duration
 }
 
-func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, ur domain.UserRoleRepository, cas domain.CasbinRBACRepository, uf domain.UserFilepathRepository, timeout time.Duration) domain.UserUsecase {
+// func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, ur domain.UserRoleRepository, cas domain.CasbinRBACRepository, uf domain.UserFilepathRepository, timeout time.Duration) domain.UserUsecase {
+// 	return &userUsecase{
+// 		userRepo:         u,
+// 		roleRepo:         r,
+// 		userRoleRepo:     ur,
+// 		casbinRepo:       cas,
+// 		userFilepathRepo: uf,
+// 		contextTimeout:   timeout,
+// 	}
+
+// }
+func NewUserUsecase(u domain.UserRepository, r domain.RoleRepository, ur domain.UserRoleRepository, uf domain.UserFilepathRepository, timeout time.Duration) domain.UserUsecase {
 	return &userUsecase{
 		userRepo:         u,
 		roleRepo:         r,
 		userRoleRepo:     ur,
-		casbinRepo:       cas,
 		userFilepathRepo: uf,
 		contextTimeout:   timeout,
 	}

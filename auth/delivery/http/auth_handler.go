@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-starter/domain"
+	"github.com/adhtanjung/go-starter/pkg/responses"
 	"github.com/labstack/echo/v4"
 	"github.com/markbates/goth/gothic"
 	"github.com/sirupsen/logrus"
@@ -95,17 +96,17 @@ func (a *AuthHandler) GoogleOauthCallback(c echo.Context) (err error) {
 	userDetail.OauthToken = user.AccessToken
 	userDetail.VerifiedAt = &now
 
-	refreshTokenRegist, tokenRegist, err := a.AUsecase.Register(ctx, &userDetail, &domain.UserRole{}, true)
+	registerData, err := a.AUsecase.Register(ctx, &userDetail, &domain.UserRole{}, true)
 	if err != nil {
 		if strings.Contains(err.Error(), "taken") {
-			token, refreshToken, err := a.AUsecase.Login(ctx, domain.Auth{UsernameOrEmail: user.Email}, true)
+			data, err := a.AUsecase.Login(ctx, domain.Auth{UsernameOrEmail: user.Email}, true)
 			if err != nil {
 				return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 			}
 
 			c.SetCookie(&http.Cookie{
 				Name:     "refresh_token",
-				Value:    refreshToken,
+				Value:    data.RefreshToken,
 				Domain:   "localhost",
 				MaxAge:   60 * 60 * 24 * 7,
 				Path:     "/",
@@ -114,7 +115,7 @@ func (a *AuthHandler) GoogleOauthCallback(c echo.Context) (err error) {
 			})
 			c.SetCookie(&http.Cookie{
 				Name:     "access_token",
-				Value:    token,
+				Value:    data.Token,
 				Domain:   "localhost",
 				MaxAge:   60 * 60 * 24,
 				Path:     "/",
@@ -141,7 +142,7 @@ func (a *AuthHandler) GoogleOauthCallback(c echo.Context) (err error) {
 	} // b, err := json.Marshal(map[string]string{"token": tokenRegist, "refresh_token": refreshTokenRegist})
 	c.SetCookie(&http.Cookie{
 		Name:     "refresh_token",
-		Value:    refreshTokenRegist,
+		Value:    registerData.RefreshToken,
 		Domain:   "localhost",
 		MaxAge:   60 * 60 * 24 * 7,
 		Path:     "/",
@@ -150,7 +151,7 @@ func (a *AuthHandler) GoogleOauthCallback(c echo.Context) (err error) {
 	})
 	c.SetCookie(&http.Cookie{
 		Name:     "access_token",
-		Value:    tokenRegist,
+		Value:    registerData.Token,
 		Domain:   "localhost",
 		MaxAge:   60 * 60 * 24,
 		Path:     "/",
@@ -167,7 +168,6 @@ func (a *AuthHandler) GoogleOauthCallback(c echo.Context) (err error) {
 		Expires:  time.Now().Add(time.Hour),
 	})
 	// c.Response().Write(b)
-	log.Println("END")
 	return c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/dashboard")
 	// return c.JSON(http.StatusOK, echo.Map{"token": tokenRegist, "refresh_token": refreshTokenRegist})
 
@@ -201,7 +201,7 @@ func (a *AuthHandler) Login(c echo.Context) (err error) {
 	}
 
 	ctx := c.Request().Context()
-	token, refreshToken, errLogin := a.AUsecase.Login(ctx, auth, false)
+	data, errLogin := a.AUsecase.Login(ctx, auth, false)
 
 	if errLogin != nil {
 		return c.JSON(http.StatusNotFound, ResponseError{Message: errLogin.Error()})
@@ -209,22 +209,25 @@ func (a *AuthHandler) Login(c echo.Context) (err error) {
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	// c.SetCookie(&http.Cookie{
-	// 	Name:       "refresh_token",
-	// 	Value:      refreshToken,
-	// 	Path:       "/refresh_token",
-	// 	Domain:     "",
-	// 	Expires:    time.Time{},
-	// 	RawExpires: "",
-	// 	MaxAge:     60 * 60 * 24 * 7,
-	// 	Secure:     false,
-	// 	HttpOnly:   false,
-	// 	SameSite:   0,
-	// 	Raw:        "",
-	// 	Unparsed:   []string{},
-	// })
-	// return c.Redirect(http.StatusMovedPermanently, "http://localhost:3000/dashboard")
-	return c.JSON(http.StatusOK, echo.Map{"token": token, "refresh_token": refreshToken})
+	c.SetCookie(&http.Cookie{
+		Name:       "refresh_token",
+		Value:      data.RefreshToken,
+		Path:       "/refresh_token",
+		Domain:     "localhost",
+		Expires:    time.Time{},
+		RawExpires: "",
+		MaxAge:     60 * 60 * 24 * 7,
+		Secure:     false,
+		HttpOnly:   false,
+	})
+	return c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/dashboard")
+	// data := echo.Map{
+	// 	"token":         token,
+	// 	"refresh_token": refreshToken,
+	// }
+	// response := responses.NewResponse(data, http.StatusOK, "success", "operation success")
+
+	// return c.JSON(http.StatusOK, response)
 
 }
 func (u *AuthHandler) Register(c echo.Context) (err error) {
@@ -238,14 +241,17 @@ func (u *AuthHandler) Register(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 	ctx := c.Request().Context()
-	refreshToken, token, err := u.AUsecase.Register(ctx, &user, &domain.UserRole{}, false)
+
+	data, err := u.AUsecase.Register(ctx, &user, &domain.UserRole{}, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "taken") {
 			return c.JSON(http.StatusConflict, ResponseError{Message: err.Error()})
 		}
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusCreated, echo.Map{"token": token, "refresh_token": refreshToken})
+	response := responses.NewResponse(data, http.StatusOK, "success", "operation success")
+	return c.JSON(http.StatusCreated, response)
+	// return c.JSON(http.StatusCreated, echo.Map{"token": token, "refresh_token": refreshToken})
 	// return c.JSON(http.StatusCreated, user)
 
 }

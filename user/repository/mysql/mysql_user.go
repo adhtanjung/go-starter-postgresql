@@ -2,9 +2,10 @@ package mysql
 
 import (
 	"context"
+	"log"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
-	"github.com/adhtanjung/go-boilerplate/pkg/helpers"
+	"github.com/adhtanjung/go-starter/domain"
+	"github.com/adhtanjung/go-starter/pkg/helpers"
 	"github.com/casbin/casbin/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -26,6 +27,7 @@ func NewMysqlUserFilepathRepository(Conn *gorm.DB) domain.UserFilepathRepository
 }
 
 func (m *mysqlUserFilepathRepository) Store(ctx context.Context, u *domain.UserFilepath) (err error) {
+	log.Println("HEEREEE")
 	if result := m.Conn.Create(&u); result.Error != nil {
 		return result.Error
 	}
@@ -34,6 +36,7 @@ func (m *mysqlUserFilepathRepository) Store(ctx context.Context, u *domain.UserF
 
 func (m *mysqlUserRepository) Store(ctx context.Context, u *domain.User) (err error) {
 	conn := m.Conn.WithContext(ctx)
+
 	if result := conn.Create(&u); result.Error != nil {
 		return result.Error
 	}

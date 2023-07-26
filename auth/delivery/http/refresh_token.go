@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-starter/domain"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )

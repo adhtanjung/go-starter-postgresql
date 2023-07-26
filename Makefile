@@ -24,6 +24,8 @@ up: stop
 
 serve:
 	go run app/main.go
+tidy:
+	go mod tidy
 
 lint-prepare:
 	@echo "Installing golangci-lint"

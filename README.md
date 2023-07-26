@@ -1,4 +1,4 @@
-# go-boilerplate
+# go-starter
 
 ## Description
 
@@ -27,7 +27,7 @@ This project has  4 Domain layer :
 
 #### The diagram:
 
-![golang clean architecture](https://github.com/adhtanjung/go-boilerplate/raw/master/clean-arch.png)
+![golang clean architecture](https://github.com/adhtanjung/go-starter/raw/master/clean-arch.png)
 
 The original explanation about this project's structure can read from this medium's post : https://medium.com/@imantumorang/golang-clean-archithecture-efd6d7c43047.
 
@@ -52,7 +52,7 @@ Here is the steps to run it with `docker-compose`
 $ cd workspace
 
 # Clone into YOUR $GOPATH/src
-$ git clone https://github.com/adhtanjung/go-boilerplate.git
+$ git clone https://github.com/adhtanjung/go-starter.git
 
 #move to project
 $ cd go-clean-arch
@@ -77,5 +77,5 @@ $ make stop
 
 In this project, I use some tools listed below. But you can use any simmilar library that have the same purposes. But, well, different library will have different implementation type. Just be creative and use anything that you really need.
 
-- All libraries listed in [`go.mod`](https://github.com/adhtanjung/go-boilerplate/blob/master/go.mod)
+- All libraries listed in [`go.mod`](https://github.com/adhtanjung/go-starter/blob/master/go.mod)
 - ["github.com/vektra/mockery".](https://github.com/vektra/mockery) To Generate Mocks for testing needs.

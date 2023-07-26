@@ -1,10 +1,9 @@
 package http
 
 import (
-	"log"
 	"net/http"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-starter/domain"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
@@ -49,7 +48,7 @@ func (u *UserHandler) RefreshToken(c echo.Context) (err error) {
 }
 
 func (u *UserHandler) Store(c echo.Context) (err error) {
-	log.Println(c.Get("user_id"))
+	// log.Println(c.Get("user_id"))
 	var user domain.User
 	err = c.Bind(&user)
 	if err != nil {
@@ -128,6 +127,7 @@ func getStatusCode(err error) int {
 	}
 
 	logrus.Error(err)
+
 	switch err {
 	case domain.ErrInternalServerError:
 		return http.StatusInternalServerError

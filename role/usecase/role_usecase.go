@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-starter/domain"
 )
 
 type roleUsecase struct {

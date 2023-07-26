@@ -2,7 +2,7 @@
   {
     "method": "POST",
     "path": "/api/users",
-    "name": "github.com/adhtanjung/go-boilerplate/user/delivery/http.(*UserHandler).Store-fm"
+    "name": "github.com/adhtanjung/go-starter/user/delivery/http.(*UserHandler).Store-fm"
   },
   {
     "method": "DELETE",
@@ -27,7 +27,7 @@
   {
     "method": "POST",
     "path": "/login",
-    "name": "github.com/adhtanjung/go-boilerplate/auth/delivery/http.(*AuthHandler).Login-fm"
+    "name": "github.com/adhtanjung/go-starter/auth/delivery/http.(*AuthHandler).Login-fm"
   },
   {
     "method": "GET",
@@ -42,7 +42,7 @@
   {
     "method": "GET",
     "path": "/api/roles/:name",
-    "name": "github.com/adhtanjung/go-boilerplate/role/delivery/http.(*RoleHandler).GetByName-fm"
+    "name": "github.com/adhtanjung/go-starter/role/delivery/http.(*RoleHandler).GetByName-fm"
   },
   {
     "method": "CONNECT",
@@ -87,7 +87,7 @@
   {
     "method": "PUT",
     "path": "/api/users/:id",
-    "name": "github.com/adhtanjung/go-boilerplate/user/delivery/http.(*UserHandler).Update-fm"
+    "name": "github.com/adhtanjung/go-starter/user/delivery/http.(*UserHandler).Update-fm"
   },
   {
     "method": "TRACE",
@@ -107,7 +107,7 @@
   {
     "method": "GET",
     "path": "/api/users/:id",
-    "name": "github.com/adhtanjung/go-boilerplate/user/delivery/http.(*UserHandler).GetByID-fm"
+    "name": "github.com/adhtanjung/go-starter/user/delivery/http.(*UserHandler).GetByID-fm"
   },
   {
     "method": "OPTIONS",
@@ -127,7 +127,7 @@
   {
     "method": "POST",
     "path": "/api/roles",
-    "name": "github.com/adhtanjung/go-boilerplate/role/delivery/http.(*RoleHandler).Store-fm"
+    "name": "github.com/adhtanjung/go-starter/role/delivery/http.(*RoleHandler).Store-fm"
   },
   {
     "method": "HEAD",

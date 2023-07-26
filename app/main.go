@@ -26,34 +26,35 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
-	_ "github.com/go-sql-driver/mysql"
+
+	// _ "github.com/go-sql-driver/mysql"
 	jwt "github.com/golang-jwt/jwt/v4"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
-	middlewares "github.com/adhtanjung/go-boilerplate/pkg/middlewares"
+	"github.com/adhtanjung/go-starter/domain"
+	middlewares "github.com/adhtanjung/go-starter/pkg/middlewares"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
-	"go.elastic.co/apm/module/apmechov4/v2"
 
-	// _articleHttpDelivery "github.com/adhtanjung/go-boilerplate/article/delivery/http"
-	_articleHttpDeliveryMiddleware "github.com/adhtanjung/go-boilerplate/article/delivery/http/middleware"
-	// _articleRepo "github.com/adhtanjung/go-boilerplate/article/repository/mysql"
-	// _articleUcase "github.com/adhtanjung/go-boilerplate/article/usecase"
-	_authHttpDelivery "github.com/adhtanjung/go-boilerplate/auth/delivery/http"
-	_authUcase "github.com/adhtanjung/go-boilerplate/auth/usecase"
+	// "go.elastic.co/apm/module/apmechov4/v2"
 
-	// _refreshTokenHttpDelivery "github.com/adhtanjung/go-boilerplate/auth/delivery/http"
-	_casbinRepo "github.com/adhtanjung/go-boilerplate/casbin/repository/mysql"
-	_roleHttpDelivery "github.com/adhtanjung/go-boilerplate/role/delivery/http"
-	_roleRepo "github.com/adhtanjung/go-boilerplate/role/repository/mysql"
-	_roleUcase "github.com/adhtanjung/go-boilerplate/role/usecase"
-	_userHttpDelivery "github.com/adhtanjung/go-boilerplate/user/delivery/http"
-	_userRepo "github.com/adhtanjung/go-boilerplate/user/repository/mysql"
-	_userUcase "github.com/adhtanjung/go-boilerplate/user/usecase"
-	_userRoleRepo "github.com/adhtanjung/go-boilerplate/user_role/repository/mysql"
+	// _articleHttpDelivery "github.com/adhtanjung/go-starter/article/delivery/http"
+	// _articleRepo "github.com/adhtanjung/go-starter/article/repository/mysql"
+	// _articleUcase "github.com/adhtanjung/go-starter/article/usecase"
+	_authHttpDelivery "github.com/adhtanjung/go-starter/auth/delivery/http"
+	_authUcase "github.com/adhtanjung/go-starter/auth/usecase"
+
+	// _refreshTokenHttpDelivery "github.com/adhtanjung/go-starter/auth/delivery/http"
+	// _casbinRepo "github.com/adhtanjung/go-starter/casbin/repository/mysql"
+	_roleHttpDelivery "github.com/adhtanjung/go-starter/role/delivery/http"
+	_roleRepo "github.com/adhtanjung/go-starter/role/repository/mysql"
+	_roleUcase "github.com/adhtanjung/go-starter/role/usecase"
+	_userHttpDelivery "github.com/adhtanjung/go-starter/user/delivery/http"
+	_userRepo "github.com/adhtanjung/go-starter/user/repository/mysql"
+	_userUcase "github.com/adhtanjung/go-starter/user/usecase"
+	_userRoleRepo "github.com/adhtanjung/go-starter/user_role/repository/mysql"
 ) // TemplateRenderer is a custom html/template renderer for Echo framework
 type TemplateRenderer struct {
 	templates *template.Template
@@ -132,6 +133,10 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 
 		for _, role := range roles {
 			result, err := e.enforcer.Enforce(role, path, method)
+			log.Println("role:", role)
+			log.Println("path:", path)
+			log.Println("method:", method)
+			log.Println("result:", result)
 			if err != nil {
 				return echo.ErrInternalServerError
 			}
@@ -147,30 +152,6 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 var (
 	upgrader = websocket.Upgrader{}
 )
-
-func hello(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	//
-	defer ws.Close()
-
-	for {
-		// Write
-		err := ws.WriteMessage(websocket.TextMessage, []byte("Hello, Client!"))
-		if err != nil {
-			c.Logger().Error(err)
-		}
-
-		// Read
-		_, msg, err := ws.ReadMessage()
-		if err != nil {
-			c.Logger().Error(err)
-		}
-		fmt.Printf("%s\n", msg)
-	}
-}
 
 type M map[string]interface{}
 type Renderer struct {
@@ -208,17 +189,6 @@ func (t *Renderer) Render(
 func main() {
 	runtime.GOMAXPROCS(4)
 
-	// key := "Secret-session-key" // Replace with your SESSION_SECRET or similar
-	// maxAge := 86400 * 30        // 30 days
-	// isProd := false             // Set to true when serving over https
-
-	// store := sessions.NewCookieStore([]byte(key))
-	// store.MaxAge(maxAge)
-	// store.Options.Path = "/"
-	// store.Options.HttpOnly = true // HttpOnly should always be enabled
-	// store.Options.Secure = isProd
-
-	// gothic.Store = store
 	gugel := google.New(viper.GetString("google.client_id"), viper.GetString("google.client_secret"), "http://localhost:9090/auth/callback?provider=google")
 	gugel.SetPrompt("consent")
 
@@ -230,12 +200,15 @@ func main() {
 	dbUser := viper.GetString(`database.user`)
 	dbPass := viper.GetString(`database.pass`)
 	dbName := viper.GetString(`database.name`)
-	connection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
+	// connection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
+	// connection := "postgres://adhitanjung:@localhost:5432/starter"
 	val := url.Values{}
 	val.Add("parseTime", "1")
 	val.Add("loc", "Asia/Jakarta")
-	dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
-	dbConn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai", dbHost, dbUser, dbPass, dbName, dbPort)
+	// dsn := "host=localhost user=adhitanjung password=asdqwe123 dbname=starter port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+
+	dbConn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		// Logger: logger.Default.LogMode(logger.Info),
 	})
 
@@ -246,14 +219,22 @@ func main() {
 	if err := dbConn.AutoMigrate(&domain.User{}, &domain.UserFilepath{}, &domain.UserRole{}); err != nil {
 		log.Println("migration error", err)
 	}
-	casbinDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/boilerplate", dbUser, dbPass, dbHost, dbPort)
-	a, _ := gormadapter.NewAdapter("mysql", casbinDsn, true) // Your driver and data source.
+	// casbinDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/boilerplate", dbUser, dbPass, dbHost, dbPort)
+	casbinDsn := "host=localhost user=adhitanjung password=asdqwe123 dbname=casbin port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	a, _ := gormadapter.NewAdapter("postgres", casbinDsn, true) // Your driver and data source.
 
 	en, _ := casbin.NewEnforcer("auth_model.conf", a)
 	enforcer := Enforcer{enforcer: en}
+	// en.AddPolicy("superadmin", "/*", "*")
+	// en.AddPolicy("user", "/api/v1/users/*", "*")
+	// en.AddPolicy("user", "/logout", "*")
 
 	// Load the policy from DB.
 	en.LoadPolicy()
+	enforcc, _ := en.Enforce("user", "/api/v1/users", "POST")
+	log.Println("WOOOOOW", enforcc)
+	en.SavePolicy()
+	// en.EnableAutoSave(true)
 
 	signingKey := []byte(viper.GetString(`secret.jwt`))
 	signingKeyRefreshToken := []byte(viper.GetString(`secret.refresh_jwt`))
@@ -322,9 +303,7 @@ func main() {
 	})
 
 	e.Static("/", "public")
-	middL := _articleHttpDeliveryMiddleware.InitMiddleware()
-	// e.Use(middleware.Logger())
-	e.GET("/ws", hello)
+	e.Use(middleware.Logger())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"*"},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
@@ -332,10 +311,7 @@ func main() {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(middlewares.MiddlewareLogging)
-	e.Use(apmechov4.Middleware())
-	// e.GET("/auth/google/callback", func(c echo.Context) error{
-	// 	return c.
-	// })
+	// e.Use(apmechov4.Middleware())
 	e.GET("/auth/callback", func(c echo.Context) error {
 
 		user, err := gothic.CompleteUserAuth(c.Response(), c.Request())
@@ -351,28 +327,13 @@ func main() {
 
 	})
 	e.GET("/auth", func(c echo.Context) error {
-		// providerName := c.QueryParam("provider")
-		// provider, err := goth.GetProvider(providerName)
-		// if err != nil {
-		// 	return err
-		// }
-		// sess, err := provider.BeginAuth("state")
-		// if err != nil {
-		// 	return err
-		// }
-		// url, err := sess.GetAuthURL()
-		// if err != nil {
-		// 	return err
-		// }
 
 		gothic.BeginAuthHandler(c.Response(), c.Request())
-		// return c.Redirect(http.StatusFound, url)
 		return nil
 	})
 	e.GET("/test-google", func(c echo.Context) error {
 		t, _ := template.ParseFiles("./web/oauth_login.html")
 		t.Execute(c.Response(), false)
-		// return c.HTML(http.StatusOK, `<p><a href="/auth/google">Log in with google</a></p>`)
 		return c.Render(http.StatusOK, "home", t)
 	})
 
@@ -399,13 +360,11 @@ func main() {
 	// }))
 	refreshToken := e.Group("/refresh-token")
 	refreshToken.Use(middleware.JWTWithConfig(configRefreshToken))
-	refreshToken.Use(middL.CORS)
 	refreshToken.Use(middlewares.TokenToContext(viper.GetString("secret.refresh_jwt")))
 
 	apiGroup := e.Group("/api")
 	v1 := apiGroup.Group("/v1")
 	v1.Use(middleware.JWTWithConfig(config))
-	v1.Use(middL.CORS)
 	v1.Use(enforcer.Enforce)
 	v1.Use(middlewares.TokenToContext(viper.GetString("secret.jwt")))
 	// authorRepo := _authorRepo.NewMysqlAuthorRepository(dbConn)
@@ -414,10 +373,11 @@ func main() {
 	userFilepathRepo := _userRepo.NewMysqlUserFilepathRepository(dbConn)
 	roleRepo := _roleRepo.NewMysqlRoleRepository(dbConn)
 	userRoleRepo := _userRoleRepo.NewMysqlUserRoleRepository(dbConn)
-	casbinRepo := _casbinRepo.NewMysqlCasbinRepository(en)
+	// casbinRepo := _casbinRepo.NewMysqlCasbinRepository(en)
 
 	timeoutContext := time.Duration(viper.GetInt("context.timeout")) * time.Second
-	us := _userUcase.NewUserUsecase(userRepo, roleRepo, userRoleRepo, casbinRepo, userFilepathRepo, timeoutContext)
+	// us := _userUcase.NewUserUsecase(userRepo, roleRepo, userRoleRepo, casbinRepo, userFilepathRepo, timeoutContext)
+	us := _userUcase.NewUserUsecase(userRepo, roleRepo, userRoleRepo, userFilepathRepo, timeoutContext)
 	ru := _roleUcase.NewRoleUsecase(roleRepo, timeoutContext)
 	auth := _authUcase.NewAuthUsecase(userRepo, userRoleRepo, roleRepo, timeoutContext)
 	// au := _articleUcase.NewArticleUsecase(ar, authorRepo, timeoutContext)

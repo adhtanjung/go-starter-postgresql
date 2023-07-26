@@ -14,12 +14,23 @@ type User struct {
 	Email         string                `json:"email,omitempty" validate:"required" form:"email" gorm:"index"`
 	Password      string                `json:"password,omitempty" form:"password"`
 	Name          string                `json:"name,omitempty" form:"name"`
+	Gender        string                `json:"gender,omitempty" form:"gender"`
+	Status        string                `gorm:"default:'not active'" json:"status,omitempty" form:"status"`
 	UserRoles     []UserRole            `gorm:"foreignKey:UserID;" json:"user_role,omitempty" form:"user_roles"`
 	ProfilePic    string                `json:"profile_pic,omitempty"`
 	File          *multipart.FileHeader `gorm:"-" json:"file,omitempty"`
 	VerifiedAt    *time.Time            `json:"verified_at,omitempty" form:"verified_at"`
 	OauthProvider string                `json:"oauth_provider,omitempty"`
 	OauthToken    string                `json:"oauth_token,omitempty"`
+}
+
+type AuthResponse struct {
+	Username     string `json:"username,omitempty" `
+	Email        string `json:"email,omitempty"`
+	Gender       string `json:"gender,omitempty"`
+	Status       string `json:"status,omitempty"`
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type UserUpdate struct {
@@ -43,8 +54,8 @@ type ForgotPassword struct {
 }
 
 type AuthUsecase interface {
-	Login(ctx context.Context, auth Auth, isOauth bool) (string, string, error)
-	Register(context.Context, *User, *UserRole, bool) (string, string, error)
+	Login(ctx context.Context, auth Auth, isOauth bool) (AuthResponse, error)
+	Register(context.Context, *User, *UserRole, bool) (AuthResponse, error)
 	ForgotPassword(ctx context.Context, email string) error
 }
 type UserUsecase interface {

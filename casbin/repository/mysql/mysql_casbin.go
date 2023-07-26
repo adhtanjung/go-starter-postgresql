@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-starter/domain"
 	"github.com/casbin/casbin/v2"
 )
 

@@ -3,7 +3,7 @@ package mysql
 import (
 	"context"
 
-	"github.com/adhtanjung/go-boilerplate/domain"
+	"github.com/adhtanjung/go-starter/domain"
 	"gorm.io/gorm"
 )
 

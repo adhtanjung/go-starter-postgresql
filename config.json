@@ -8,10 +8,10 @@
 	},
 	"database": {
 		"host": "localhost",
-		"port": "3306",
-		"user": "root",
-		"pass": "password",
-		"name": "adminhub"
+		"port": "5432",
+		"user": "adhitanjung",
+		"pass": "asdqwe123",
+		"name": "starter"
 	},
 	"secret": {
 		"jwt": "jwt_secret_key_boilerplate",
