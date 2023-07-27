@@ -54,7 +54,7 @@ func (r *RoleHandler) GetByName(c echo.Context) (err error) {
 		"data": role,
 	})
 }
-func isRequestValid(m *domain.Article) (bool, error) {
+func isRequestValid(m *domain.Role) (bool, error) {
 	validate := validator.New()
 	err := validate.Struct(m)
 	if err != nil {

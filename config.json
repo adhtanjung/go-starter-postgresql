@@ -13,6 +13,9 @@
 		"pass": "asdqwe123",
 		"name": "starter"
 	},
+	"casbin_database": {
+		"name": "casbin"
+	},
 	"secret": {
 		"jwt": "jwt_secret_key_boilerplate",
 		"refresh_jwt": "refresh_jwt_secret_key_boilerplate_"

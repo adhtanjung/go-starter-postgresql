@@ -39,5 +39,11 @@ func ErrorHandler(err error, c echo.Context) {
 	}
 
 	MakeLogEntry(c).Error(report.Message)
-	c.HTML(report.Code, report.Message.(string))
+	if err := c.HTML(report.Code, report.Message.(string)); err != nil {
+		// If there's an error responding to the client, log it as well.
+		MakeLogEntry(c).Errorf("Failed to respond with HTML: %v", err)
+		// Return a generic 500 internal server error message.
+		c.HTML(http.StatusInternalServerError, "Internal Server Error")
+	}
+
 }
