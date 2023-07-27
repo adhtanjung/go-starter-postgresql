@@ -25,11 +25,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 
-	"github.com/casbin/casbin/v2"
-	gormadapter "github.com/casbin/gorm-adapter/v3"
-
-	// _ "github.com/go-sql-driver/mysql"
-
 	"github.com/adhtanjung/go-starter/domain"
 	"github.com/adhtanjung/go-starter/pkg/cas"
 	"github.com/adhtanjung/go-starter/pkg/database"
@@ -54,21 +49,7 @@ import (
 	_userRepo "github.com/adhtanjung/go-starter/user/repository/mysql"
 	_userUcase "github.com/adhtanjung/go-starter/user/usecase"
 	_userRoleRepo "github.com/adhtanjung/go-starter/user_role/repository/mysql"
-) // TemplateRenderer is a custom html/template renderer for Echo framework
-// type TemplateRenderer struct {
-// 	templates *template.Template
-// }
-
-// // Render renders a template document
-// func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-
-// 	// Add global methods if data is a map
-// 	if viewContext, isMap := data.(map[string]interface{}); isMap {
-// 		viewContext["reverse"] = c.Echo().Reverse
-// 	}
-
-// 	return t.templates.ExecuteTemplate(w, name, data)
-// }
+)
 
 func init() {
 
@@ -125,20 +106,6 @@ func main() {
 	if err := dbConn.AutoMigrate(&domain.User{}, &domain.UserFilepath{}, &domain.UserRole{}); err != nil {
 		log.Println("migration error", err)
 	}
-	// casbinDsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/boilerplate", dbUser, dbPass, dbHost, dbPort)
-	casbinDsn := "host=localhost user=adhitanjung password=asdqwe123 dbname=casbin port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	a, _ := gormadapter.NewAdapter("postgres", casbinDsn, true) // Your driver and data source.
-
-	en, _ := casbin.NewEnforcer("auth_model.conf", a)
-	enforcer := cas.Enforcer{Enforcer: en}
-	en.AddPolicy("superadmin", "/*", "*")
-	en.AddPolicy("user", "/api/v1/users/", "*")
-	en.AddPolicy("user", "/logout", "*")
-
-	// Load the policy from DB.
-	en.LoadPolicy()
-	en.SavePolicy()
-	// en.EnableAutoSave(true)
 
 	config := middleware.JWTConfig{
 		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
@@ -185,6 +152,27 @@ func main() {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(middlewares.MiddlewareLogging)
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:       true,
+		LogStatus:    true,
+		LogMethod:    true,
+		LogRemoteIP:  true,
+		LogUserAgent: true,
+		LogError:     true,
+		LogRoutePath: true,
+		LogValuesFunc: func(c echo.Context, values middleware.RequestLoggerValues) error {
+			logrus.WithFields(logrus.Fields{
+				"method":     values.Method,
+				"URI":        values.URI,
+				"status":     values.Status,
+				"error":      values.Error,
+				"user_agent": values.UserAgent,
+				"remote_ip":  values.RemoteIP,
+				"route_path": values.RoutePath,
+			}).Info("request")
+			return nil
+		},
+	}))
 	// e.Use(apmechov4.Middleware())
 
 	url := echoSwagger.URL("http://localhost:9090/swagger/doc.json") //The url pointing to API definition
@@ -230,6 +218,9 @@ func main() {
 	apiGroup := e.Group("/api")
 	v1 := apiGroup.Group("/v1")
 	v1.Use(middleware.JWTWithConfig(config))
+
+	enforcer, en := cas.InitCasbin()
+
 	v1.Use(enforcer.Enforce)
 	v1.Use(middlewares.TokenToContext(viper.GetString("secret.jwt")))
 	userRepo := _userRepo.NewMysqlUserRepository(dbConn, en)

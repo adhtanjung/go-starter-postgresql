@@ -74,7 +74,7 @@ func (a *AuthHandler) GoogleOauth(c echo.Context) (err error) {
 	// log.Println(q)
 	// log.Println(c.Request().URL.RawQuery)
 	// c.Request().RequestURI = "/auth?provider=google&prompt=select_account"
-	log.Println(c.Request().RequestURI)
+	// log.Println(c.Request().RequestURI)
 	gothic.BeginAuthHandler(c.Response(), c.Request())
 	return
 }
@@ -206,8 +206,6 @@ func (a *AuthHandler) Login(c echo.Context) (err error) {
 	var auth domain.Auth
 
 	err = c.Bind(&auth)
-	log.Println(auth.Password)
-	log.Println(auth.UsernameOrEmail)
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad request")
 	}

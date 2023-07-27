@@ -58,7 +58,7 @@ func (a *authUsecase) Login(c context.Context, auth domain.Auth, isOauth bool) (
 
 	token, err := helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 24,
-		Secret:    "",
+		Secret:    viper.GetString("secret.jwt"),
 	})
 	if err != nil {
 		return domain.AuthResponse{}, err
@@ -201,7 +201,7 @@ func (u *authUsecase) Register(c context.Context, m *domain.User, ur *domain.Use
 	}
 	token, err := helpers.GenerateToken(user.ID, user.UserRoles, helpers.ShouldClaims{
 		ExpiresAt: 24,
-		Secret:    "",
+		Secret:    viper.GetString("secret.jwt"),
 	})
 	if err != nil {
 		return domain.AuthResponse{}, errors.New("error buat token")

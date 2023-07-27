@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
@@ -54,6 +55,9 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		for _, role := range roles {
+			log.Println(role)
+			log.Println(path)
+			log.Println(method)
 			result, err := e.Enforcer.Enforce(role, path, method)
 			if err != nil {
 				return echo.ErrInternalServerError
@@ -65,4 +69,22 @@ func (e *Enforcer) Enforce(next echo.HandlerFunc) echo.HandlerFunc {
 
 		return echo.ErrForbidden
 	}
+}
+
+func InitCasbin() (enforcer Enforcer, en *casbin.Enforcer) {
+	casbinDsn := "host=localhost user=adhitanjung password=asdqwe123 dbname=casbin port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	a, _ := gormadapter.NewAdapter("postgres", casbinDsn, true) // Your driver and data source.
+
+	en, _ = casbin.NewEnforcer("auth_model.conf", a)
+	enforcer = Enforcer{Enforcer: en}
+	en.AddPolicy("superadmin", "/*", "*")
+	en.AddPolicy("user", "/api/v1/users/", "*")
+	en.AddPolicy("user", "/logout", "*")
+
+	// Load the policy from DB.
+	en.LoadPolicy()
+	en.SavePolicy()
+
+	return enforcer, en
+
 }
