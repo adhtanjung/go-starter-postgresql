@@ -24,8 +24,15 @@ type User struct {
 	OauthToken    string                `json:"oauth_token,omitempty"`
 }
 
+type AuthRegister struct {
+	Username string `json:"username"`
+	Password string `json:"password" form:"password"`
+	Name     string `json:"name" form:"name"`
+	Email    string `json:"email"`
+	Gender   string `json:"gender,omitempty"`
+}
 type AuthResponse struct {
-	Username     string `json:"username,omitempty" `
+	Username     string `json:"username,omitempty"`
 	Email        string `json:"email,omitempty"`
 	Gender       string `json:"gender,omitempty"`
 	Status       string `json:"status,omitempty"`

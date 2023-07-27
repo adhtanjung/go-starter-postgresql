@@ -193,9 +193,21 @@ func (a *AuthHandler) ForgotPassword(c echo.Context) (err error) {
 
 }
 
+// LoginAccount godoc
+// @Summary      login
+// @Description  login
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param		 account	body		domain.Auth true	"login account"
+// @Success      200  {object}  responses.Response
+// @Router       /login [post]
 func (a *AuthHandler) Login(c echo.Context) (err error) {
 	var auth domain.Auth
+
 	err = c.Bind(&auth)
+	log.Println(auth.Password)
+	log.Println(auth.UsernameOrEmail)
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad request")
 	}
@@ -209,27 +221,37 @@ func (a *AuthHandler) Login(c echo.Context) (err error) {
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	c.SetCookie(&http.Cookie{
-		Name:       "refresh_token",
-		Value:      data.RefreshToken,
-		Path:       "/refresh_token",
-		Domain:     "localhost",
-		Expires:    time.Time{},
-		RawExpires: "",
-		MaxAge:     60 * 60 * 24 * 7,
-		Secure:     false,
-		HttpOnly:   false,
-	})
-	return c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/dashboard")
-	// data := echo.Map{
-	// 	"token":         token,
-	// 	"refresh_token": refreshToken,
+	// c.SetCookie(&http.Cookie{
+	// 	Name:       "refresh_token",
+	// 	Value:      data.RefreshToken,
+	// 	Path:       "/refresh_token",
+	// 	Domain:     "localhost",
+	// 	Expires:    time.Time{},
+	// 	RawExpires: "",
+	// 	MaxAge:     60 * 60 * 24 * 7,
+	// 	Secure:     false,
+	// 	HttpOnly:   false,
+	// })
+	// return c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/dashboard")
+	// tokenData := echo.Map{
+	// 	"token":         data.Token,
+	// 	"refresh_token": data.RefreshToken,
 	// }
-	// response := responses.NewResponse(data, http.StatusOK, "success", "operation success")
+	response := responses.NewResponse(data, http.StatusOK, "success", "operation success")
 
-	// return c.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, response)
 
 }
+
+// RegisterAccount godoc
+// @Summary      register new account
+// @Description  register
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param		 account	body		domain.AuthRegister true	"Add account"
+// @Success      200  {object}  domain.AuthResponse
+// @Router       /register [post]
 func (u *AuthHandler) Register(c echo.Context) (err error) {
 	var user domain.User
 	err = c.Bind(&user)

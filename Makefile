@@ -23,7 +23,9 @@ up: stop
 	docker-compose up -d
 
 serve:
+	swag init -g app/main.go
 	go run app/main.go
+
 tidy:
 	go mod tidy
 
